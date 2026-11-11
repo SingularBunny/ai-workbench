@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { knowledgeFolders, knowledgeScopes } from "../knowledge.mjs";
+import { knowledgeFolders, knowledgeScopes, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "../knowledge.mjs";
 import { knowledgeSteps, mainSteps, projectSteps, sharedMemorySteps } from "../lib.mjs";
 
 const home = "/home/u";
@@ -53,4 +53,34 @@ test("project knowledge goes into that agent's memory search only", () => {
   ]);
   assert.deepEqual(value(garden), { workspace: "/p/projects/garden", identity: { name: "Garden" }, memory: { search: { extraPaths: ["/k/garden"] } } });
   assert.deepEqual(value(orchard), { workspace: "/p/projects/orchard", identity: { name: "Orchard" } });
+});
+
+test("text copies: one root for every agent and one per project, in memory search and in the aiwb-memory config", () => {
+  const k = withTextCopies(knowledgeFolders({ global: "/k/My Vault", projects: [{ id: "garden", knowledge: ["/k/garden"] }], home }),
+    { root: "/s/workbench/knowledge-text" });
+  assert.equal(k.textAll, "/s/workbench/knowledge-text/all");
+  assert.deepEqual(projectKnowledgeDirs(k, "garden"), ["/k/garden", "/s/workbench/knowledge-text/agent-garden"]);
+  const [search, config] = sharedMemorySteps({ dir: "/p/shared", knowledge: k });
+  assert.deepEqual(value(search), ["/p/shared/memory", "/k/My Vault", "/s/workbench/knowledge-text/all"]);
+  assert.deepEqual(value(config).knowledgeText, { "*": ["/s/workbench/knowledge-text/all"], garden: ["/s/workbench/knowledge-text/agent-garden"] });
+  // Without aiwb-office (no root) there are no copies, and the config has no knowledgeText.
+  const plain = withTextCopies(knowledgeFolders({ global: "/k/v", home }), { root: null });
+  assert.equal(plain.textAll, undefined);
+  assert.equal("knowledgeText" in value(sharedMemorySteps({ dir: "/p/shared", knowledge: plain })[1]), false);
+  assert.deepEqual(value(sharedMemorySteps({ dir: "/p/shared", knowledge: plain })[0]), ["/p/shared/memory", "/k/v"]);
+});
+
+test("text copies timer: every 15 minutes on Linux with each scope as an argument; elsewhere a skip with the command", () => {
+  const k = withTextCopies(knowledgeFolders({ global: "/k/My Vault:/k/b", projects: [{ id: "garden", knowledge: ["/k/garden"] }], home }),
+    { root: "/s/kt" });
+  const args = { knowledge: k, unitDir: "/u", node: "/n/node", script: "/p/office/bin/knowledge-text.mjs", pathDirs: ["/usr/bin"] };
+  const [step] = knowledgeTextTimerSteps({ ...args, platform: "linux", systemctl: "/usr/bin/systemctl" });
+  assert.equal(step.kind, "timer");
+  const service = step.files["/u/aiwb-knowledge-text.service"];
+  assert.match(service, /ExecStart=\/n\/node \/p\/office\/bin\/knowledge-text.mjs --scope "\/s\/kt\/all=\/k\/My Vault:\/k\/b" --scope \/s\/kt\/agent-garden=\/k\/garden/);
+  assert.match(step.files["/u/aiwb-knowledge-text.timer"], /OnUnitActiveSec=15min/);
+  const [skip] = knowledgeTextTimerSteps({ ...args, platform: "darwin" });
+  assert.equal(skip.kind, "skip");
+  assert.match(skip.reason, /run by hand: node \/p\/office\/bin\/knowledge-text.mjs --scope/);
+  assert.deepEqual(knowledgeTextTimerSteps({ ...args, knowledge: knowledgeFolders({ home }), platform: "linux", systemctl: "x" }), []);
 });

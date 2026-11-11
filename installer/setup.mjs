@@ -18,7 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
 import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
-import { knowledgeFolders } from "./knowledge.mjs";
+import { knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import * as PUBLIC from "../openclaw/workbench.config.mjs";
 const { OPENCLAW_VERSION, PLUGIN_RENAMES } = PUBLIC;
@@ -385,10 +385,14 @@ async function main() {
     } catch (e) { console.error(String(e.message)); return 1; }
   }
   // Knowledge base (WORKBENCH_KNOWLEDGE, per project knowledge): folders in memory search, named in each agent's context.
-  const knowledge = knowledgeFolders({ global: env.WORKBENCH_KNOWLEDGE, projects: projectMeta, home, exists: existsSync });
+  // Text copies of PDF and Office files come from the aiwb-office plugin; without it there are none.
+  const officeEntry = (PLUGINS.own || []).find((p) => p.id === "aiwb-office");
+  const officeDir = officeEntry && path.join(pluginsRoot, officeEntry.dir);
+  const knowledge = withTextCopies(knowledgeFolders({ global: env.WORKBENCH_KNOWLEDGE, projects: projectMeta, home, exists: existsSync }),
+    { root: officeDir ? path.join(stateDir, "workbench", "knowledge-text") : null });
   if (PROJECTS) {
     try {
-      projects = projectSteps(projectMeta.map((p) => ({ ...p, knowledgeDirs: knowledge.byProject[p.id] })));
+      projects = projectSteps(projectMeta.map((p) => ({ ...p, knowledgeDirs: projectKnowledgeDirs(knowledge, p.id) })));
     } catch (e) { console.error(String(e.message)); return 1; }
   }
   // Shared memory: the main agent's folder in the data repository, if moved there (memory.mjs).
@@ -499,6 +503,10 @@ async function main() {
     node: [path.join(stateDir, "tools", "node", "bin", "node")].find(existsSync) || process.execPath,
     script: path.join(projectRoot, "migrate", "chats-sync.mjs"),
     pathDirs: [...(openclawBin ? [path.dirname(openclawBin)] : []), "/usr/local/bin", "/usr/bin", "/bin"] }));
+  plan.push(...knowledgeTextTimerSteps({ knowledge, platform: process.platform, systemctl: which("systemctl"),
+    unitDir: path.join(home, ".config", "systemd", "user"),
+    node: [path.join(stateDir, "tools", "node", "bin", "node")].find(existsSync) || process.execPath,
+    script: officeDir ? path.join(officeDir, "bin", "knowledge-text.mjs") : "", pathDirs: ["/usr/local/bin", "/usr/bin", "/bin"] }));
 
   console.log(`ai-workbench → OpenClaw ${OPENCLAW_VERSION}\nBuild: ${profileRoot ? `public + profile ${profileRoot}` : "public, no profile"}\nPlugins root: ${pluginsRoot}\nState: ${stateDir}\n`);
   for (const w of profileWarn) console.log(`⚠ profile: ${w}`);

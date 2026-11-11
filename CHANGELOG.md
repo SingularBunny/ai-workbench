@@ -16,6 +16,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 - Knowledge base: folders of notes (an Obsidian vault is one) for every agent (`WORKBENCH_KNOWLEDGE`) and per
   project (`knowledge` in `project.json`), searched by memory search and named in each agent's context, with
   permission to save notes there after an approval card for every write (needs `aiwb-memory` 0.2.0).
+- Knowledge base PDF and Office files are searched through Markdown text copies kept by the `aiwb-knowledge-text`
+  timer (pdftotext, LibreOffice), outside the knowledge folders.
 
 ## [0.1.0] - 2026-11-11
 

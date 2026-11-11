@@ -17,7 +17,9 @@ WORKBENCH_KNOWLEDGE=~/Documents/Vault
 
 A project agent gets both its own folders and the folders for every agent. Run the installer again after a change.
 
-**After adding or removing folders, rebuild the memory indexes.** The set of searched folders is part of each
+**After the first setup and after adding or removing folders, rebuild the memory indexes.** The text copy folders
+are listed once per scope, so adding a folder later changes the copies, not the list; adding the first project
+knowledge folder does change it. The set of searched folders is part of each
 agent's index identity: OpenClaw marks the existing index incompatible (`openclaw memory search --json` answers
 `"stale": true` with code `scope`) and returns no results until it is rebuilt, which needs the Gateway stopped:
 
@@ -39,9 +41,25 @@ What the installer sets:
   up there and that it may save new notes, summaries and conclusions there as Markdown, following the folder's
   structure.
 
-Memory search indexes Markdown (`.md`) files only. Other files in the folder (PDF, Word, images) are not found by
-search; the agent can still read them when it knows the path. Symbolic links inside the folder are skipped: list
-the real folder instead. To search with a local model instead of a cloud embedding service, see
+## PDF and Office files
+
+Memory search indexes Markdown (`.md`) files only. For PDF, Word, Excel and PowerPoint files (also `.doc`, `.xls`,
+`.ppt` and OpenDocument) in the knowledge folders, a timer keeps Markdown text copies under
+`~/.openclaw/workbench/knowledge-text/` (`all/` for the folders of every agent, `agent-<id>/` for a project's), and
+those folders are searched too. A copy starts with its original's path; agents are told to read and cite the original
+and never to edit the copies. The copies are made outside the knowledge folders, so the Obsidian vault stays as it is.
+
+- The timer `aiwb-knowledge-text` (systemd user timer, Linux) runs every 15 minutes and re-reads only files whose
+  size or date changed; copies of deleted files are removed. Run it now with
+  `systemctl --user start aiwb-knowledge-text`; its log: `journalctl --user -u aiwb-knowledge-text`.
+- PDF text comes from `pdftotext` (poppler), Office text from local LibreOffice, as for Office attachments in chat
+  (the `aiwb-office` plugin). Without one of them its files get no copy and the run says so. Scanned PDFs without a
+  text layer give an empty copy: there is no OCR.
+- Files over 64 MB are skipped; a copy keeps at most 2 million characters.
+- Hidden folders (`.obsidian`, `.trash`, `.git`), Office lock files (`~$…`) and symbolic links are skipped. Images are
+  not copied.
+
+Symbolic links inside a knowledge folder are skipped by memory search too: list the real folder instead. To search with a local model instead of a cloud embedding service, see
 `WORKBENCH_LOCAL_EMBEDDINGS` in the [settings reference](../reference/env.md).
 
 ## Changes are approved first

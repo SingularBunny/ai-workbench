@@ -4,7 +4,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 
-import { hasKnowledge, knowledgeScopes } from "./knowledge.mjs";
+import { hasKnowledge, knowledgeScopes, knowledgeTextScopes } from "./knowledge.mjs";
 
 /**
  * A plugin's dependency file: sibling plugins (`../<folder>`, `~/<path>`) and tools it needs. The key
@@ -459,8 +459,10 @@ export function mainSteps({ dir, sharedSearch = true, knowledge }) {
 
 /** memory.search.extraPaths of all agents: the shared memory folder plus the knowledge folders for everyone. */
 function extraPathsStep(memoryDirs, knowledge) {
-  const dirs = [...memoryDirs, ...(knowledge?.all ?? [])];
-  const note = [...memoryDirs.map((d) => `shared memory → ${d}`), ...(knowledge?.all ?? []).map((d) => `knowledge → ${d}`)].join(", ");
+  const text = knowledge?.textAll ? [knowledge.textAll] : [];
+  const dirs = [...memoryDirs, ...(knowledge?.all ?? []), ...text];
+  const note = [...memoryDirs.map((d) => `shared memory → ${d}`), ...(knowledge?.all ?? []).map((d) => `knowledge → ${d}`),
+    ...text.map((d) => `knowledge text copies → ${d}`)].join(", ");
   return { kind: "config", id: "memory.search.extraPaths", note,
     argv: ["config", "set", "memory.search.extraPaths", JSON.stringify(dirs), "--strict-json"] };
 }
@@ -480,7 +482,7 @@ export function knowledgeSteps({ knowledge, searchSet = false }) {
     ...(!searchSet && knowledge.all.length ? [extraPathsStep([], knowledge)] : []),
     { kind: "config", id: "plugins.entries.aiwb-memory.config", note: "knowledge base folders in the agents' context",
       ...(knowledge.warn.length ? { warn: knowledge.warn } : {}),
-      argv: ["config", "set", "plugins.entries.aiwb-memory.config", JSON.stringify({ knowledge: knowledgeScopes(knowledge) }), "--strict-json"] },
+      argv: ["config", "set", "plugins.entries.aiwb-memory.config", JSON.stringify(memoryConfig({ knowledge })), "--strict-json"] },
     memoryHooksStep(),
   ];
 }
@@ -491,8 +493,14 @@ export function knowledgeSteps({ knowledge, searchSet = false }) {
  * memory_search of all agents. The folder is not an agent workspace: OpenClaw stops putting an
  * agent's root MEMORY.md and USER.md into context once someone other than the agent edits them.
  */
+/** plugins.entries.aiwb-memory.config: the shared memory folder, the knowledge folders and their text copy roots. */
+function memoryConfig({ dir, knowledge }) {
+  const text = hasKnowledge(knowledge) ? knowledgeTextScopes(knowledge) : null;
+  return { ...(dir ? { dir } : {}), ...(hasKnowledge(knowledge) ? { knowledge: knowledgeScopes(knowledge) } : {}), ...(text ? { knowledgeText: text } : {}) };
+}
+
 export function sharedMemorySteps({ dir, knowledge }) {
-  const config = { dir, ...(hasKnowledge(knowledge) ? { knowledge: knowledgeScopes(knowledge) } : {}) };
+  const config = memoryConfig({ dir, knowledge });
   return [
     extraPathsStep([path.join(dir, "memory")], knowledge),
     { kind: "config", id: "plugins.entries.aiwb-memory.config", note: `shared memory → ${dir}`,
