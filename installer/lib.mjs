@@ -226,6 +226,27 @@ export function keepPinnedBases(steps, { pinOf, installedAt }) {
 }
 
 /**
+ * Providers with a free tier (docs/install/free-providers.md): provider id → the .env keys OpenClaw reads for it.
+ * A provider whose key is set counts as free for Multi-model (aiwb-compare freeProviders), so its models can be
+ * answering models. WORKBENCH_FREE_PROVIDERS overrides the list: ids separated by commas, or "none".
+ */
+export const FREE_TIER_PROVIDERS = {
+  google: ["GEMINI_API_KEY", "GOOGLE_API_KEY"], groq: ["GROQ_API_KEY"], cerebras: ["CEREBRAS_API_KEY"],
+  mistral: ["MISTRAL_API_KEY"], nvidia: ["NVIDIA_API_KEY"], huggingface: ["HF_TOKEN", "HUGGINGFACE_HUB_TOKEN"],
+};
+
+export function freeProviderSteps(env) {
+  const explicit = String(env.WORKBENCH_FREE_PROVIDERS ?? "").trim();
+  const ids = explicit
+    ? (explicit === "none" ? [] : explicit.split(",").map((s) => s.trim()).filter(Boolean))
+    : Object.entries(FREE_TIER_PROVIDERS).filter(([, keys]) => keys.some((k) => String(env[k] ?? "").trim())).map(([id]) => id);
+  if (!explicit && !ids.length) return [];
+  return [{ kind: "config", id: "plugins.entries.aiwb-compare.config.freeProviders",
+    note: ids.length ? `free model providers: ${ids.join(", ")}` : "no free model providers",
+    argv: ["config", "set", "plugins.entries.aiwb-compare.config.freeProviders", JSON.stringify(ids), "--strict-json"] }];
+}
+
+/**
  * Own plugins OpenClaw already loads from the same folder are not linked again: `plugins install --link` of an
  * already linked plugin only repeats the record, and it fails outright for a plugin inside another plugin's folder
  * ("package owner … has conflicting child rows"). The step stays an own plugin (its skills still count) with

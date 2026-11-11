@@ -30,3 +30,13 @@ test("load paths of folders that are gone are dropped in one write; nothing to d
   assert.deepEqual(staleLoadPathSteps(["/p/garden"], { exists }), []);
   assert.deepEqual(staleLoadPathSteps(undefined, { exists }), []);
 });
+
+test("free providers: those whose key is in .env count as free for Multi-model; an explicit list or none wins", async () => {
+  const { freeProviderSteps } = await import("../lib.mjs");
+  const value = (env) => JSON.parse(freeProviderSteps(env)[0].argv[3]);
+  assert.deepEqual(value({ GROQ_API_KEY: "g", HF_TOKEN: "h", MISTRAL_API_KEY: " " }), ["groq", "huggingface"]);
+  assert.deepEqual(value({ GOOGLE_API_KEY: "x" }), ["google"]);
+  assert.deepEqual(freeProviderSteps({ OPENROUTER_API_KEY: "o" }), []);          // OpenRouter's free models are known by id
+  assert.deepEqual(value({ GROQ_API_KEY: "g", WORKBENCH_FREE_PROVIDERS: "ollama, groq" }), ["ollama", "groq"]);
+  assert.deepEqual(value({ GROQ_API_KEY: "g", WORKBENCH_FREE_PROVIDERS: "none" }), []);
+});

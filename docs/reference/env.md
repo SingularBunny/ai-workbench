@@ -46,6 +46,36 @@ Semantic memory search with a local embedding model (llama-cpp plugin): cpu, or 
 
 Ollama, local or on a VM via `ssh -L 11434:127.0.0.1:11434 <vm>`; without /v1.
 
+## Free model providers
+
+### `GEMINI_API_KEY`
+
+Free tiers of model providers ([install/free-providers.md](../install/free-providers.md)): with a key, the provider's models appear in OpenClaw and count as free in Multi-model. Free tiers are rate-limited and change without notice; the limits below are the ones published by mid-2026. Google AI Studio (aistudio.google.com): Gemini/Gemma, 5–15 requests a minute; free only while billing is off for the project.
+
+### `GROQ_API_KEY`
+
+Groq (console.groq.com): about 30 requests a minute, 1,000 a day.
+
+### `CEREBRAS_API_KEY`
+
+Cerebras (cloud.cerebras.ai): about 30 requests a minute, 1 million tokens a day.
+
+### `MISTRAL_API_KEY`
+
+Mistral (console.mistral.ai, Experiment plan): free only with data-training opt-in.
+
+### `NVIDIA_API_KEY`
+
+NVIDIA (build.nvidia.com): NIM endpoints, about 1,000 requests a day.
+
+### `HF_TOKEN`
+
+Hugging Face (huggingface.co/settings/tokens): a fine-grained token with inference access; small free credit.
+
+### `WORKBENCH_FREE_PROVIDERS`
+
+Providers counted as free in Multi-model, comma-separated, instead of those with a key above; none — no provider.
+
 ## Profile and plugins
 
 ### `WORKBENCH_PROFILE`

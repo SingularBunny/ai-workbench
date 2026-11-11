@@ -28,6 +28,7 @@ nav:
       - Keys: install/keys.md
       - Running: install/run.md
       - Network and proxy: install/network.md
+      - Free model providers: install/free-providers.md
       - Backup: install/backup.md
       - Update and uninstall: install/update-uninstall.md
       - Model and Claude CLI on a VM: install/remote-vm.md

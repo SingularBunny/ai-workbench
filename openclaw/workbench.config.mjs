@@ -148,7 +148,12 @@ export const PLUGINS = {
   // Needed only if WORKBENCH_VM_SSH is set.
   runtime: [{ id: "@openclaw/acpx", when: "WORKBENCH_VM_SSH" },
     // Local embeddings model for memory search (WORKBENCH_LOCAL_EMBEDDINGS).
-    { id: "@openclaw/llama-cpp-provider", when: "WORKBENCH_LOCAL_EMBEDDINGS" }],
+    { id: "@openclaw/llama-cpp-provider", when: "WORKBENCH_LOCAL_EMBEDDINGS" },
+    // Free-tier model providers shipped as separate packages, installed once their key is in .env
+    // (docs/install/free-providers.md); Google, NVIDIA and Hugging Face are built into OpenClaw.
+    { id: "@openclaw/groq-provider", when: "GROQ_API_KEY" },
+    { id: "@openclaw/cerebras-provider", when: "CEREBRAS_API_KEY" },
+    { id: "@openclaw/mistral-provider", when: "MISTRAL_API_KEY" }],
 };
 
 // Own plugins renamed in November 2026 (folder and id). An existing install still has the old ids in
