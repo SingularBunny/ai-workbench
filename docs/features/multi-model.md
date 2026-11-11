@@ -4,6 +4,14 @@ Several models answer the same question and their answers are shown side by side
 most consistent answer, or one model merges them into a single answer. The **Multi-model** page of the Control UI
 (the `aiwb-compare` plugin, needs **Settings → Labs → Custom plugin UI**) sets the roles and has a "Try it" box.
 
+## In a chat
+
+Under the chat composer, **Several models** opens the same view as a panel beside the chat: type the question
+there (the panel does not read the composer), ask, then **Pick the most consistent** or **Merge**. **Continue
+with the most consistent answer** (or **with the merged answer**) sends it to that chat as an ordinary message —
+the question, which answer it is and from which model — so the chat's agent goes on from it, whatever model or
+runtime the agent uses. Nothing is written to the chat until you press it.
+
 ## Roles
 
 | Role | Default ("auto") | What it does |
