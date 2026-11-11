@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import * as PUBLIC from "../openclaw/workbench.config.mjs";
@@ -456,6 +456,15 @@ async function main() {
       paths: configValue("plugins.load.paths"), allow: configValue("plugins.allow"), deny: configValue("plugins.deny") } });
     plan.splice(plan.findIndex((s) => s.kind === "own"), 0, ...renameSteps);
   }
+  // Load paths of folders that are gone (a plugin moved elsewhere); not while renaming, which rewrites the same list.
+  const firstOwn = plan.findIndex((s) => s.kind === "own");
+  if (!renaming.length && firstOwn >= 0) plan.splice(firstOwn, 0, ...staleLoadPathSteps(configValue("plugins.load.paths"), { exists: existsSync }));
+  // Own plugins OpenClaw already loads from the same folder are not linked again.
+  const listed = (() => {
+    const r = openclaw(["plugins", "list", "--json"], { capture: true });
+    try { return r.code === 0 ? JSON.parse(r.out.slice(r.out.indexOf("{"))).plugins || [] : []; } catch { return []; }
+  })();
+  plan.splice(0, plan.length, ...keepLinkedOwn(plan, (id) => listed.find((x) => x.id === id && x.origin !== "bundled")?.source));
   // Own plugins' skills, in install order: on a name clash, the first one wins.
   const skillsByPlugin = Object.fromEntries(plan.filter((s) => s.kind === "own").map((s) => [s.id, s.pending ? null : pluginSkills(s.dir)]));
   const linkNow = (name) => { const t = linkTarget(path.join(stateDir, "plugin-skills", name)); try { return t && realpathSync(t); } catch { return null; } };
@@ -619,6 +628,7 @@ async function main() {
       continue;
     }
     if (!step.argv && step.kind !== "mcp-download" && step.kind !== "llama-download") continue;     // repo, already installed MCP: info only
+    if (step.kind === "own" && step.linked) { console.log("  already linked from this folder"); continue; }
     if (step.kind === "own" && step.pending) {
       const st = ownState({ id: step.id }, step.dir, { afterClone: true });
       if (!st.present || st.missing.length) {

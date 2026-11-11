@@ -19,6 +19,12 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 - Knowledge base PDF and Office files are searched through Markdown text copies kept by the `aiwb-knowledge-text`
   timer (pdftotext, LibreOffice), outside the knowledge folders.
 
+### Fixed
+
+- Re-running the installer no longer fails on a plugin that lives inside another plugin's folder: own plugins
+  OpenClaw already loads from the same folder are not linked again ("already linked" in the plan).
+- Load paths of plugin folders that no longer exist are dropped from `plugins.load.paths`.
+
 ## [0.1.0] - 2026-11-11
 
 First public release.

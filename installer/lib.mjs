@@ -225,6 +225,33 @@ export function keepPinnedBases(steps, { pinOf, installedAt }) {
   });
 }
 
+/**
+ * Own plugins OpenClaw already loads from the same folder are not linked again: `plugins install --link` of an
+ * already linked plugin only repeats the record, and it fails outright for a plugin inside another plugin's folder
+ * ("package owner … has conflicting child rows"). The step stays an own plugin (its skills still count) with
+ * `linked` set; it is shown in the plan and skipped when run. linkedFrom: id → the folder or entry file OpenClaw
+ * loads it from, or undefined.
+ */
+export function keepLinkedOwn(steps, linkedFrom) {
+  return steps.map((s) => {
+    if (s.kind !== "own" || s.pending) return s;
+    const src = linkedFrom(s.id);
+    return src && (src === s.dir || src.startsWith(s.dir + path.sep)) ? { ...s, linked: true } : s;
+  });
+}
+
+/**
+ * plugins.load.paths entries whose folder no longer exists (a plugin moved to another repository, a clone deleted):
+ * one write that keeps the rest, before the own plugins are linked. OpenClaw only warns about them, on every start.
+ */
+export function staleLoadPathSteps(paths, { exists }) {
+  if (!Array.isArray(paths)) return [];
+  const missing = paths.filter((p) => typeof p === "string" && !exists(p));
+  if (!missing.length) return [];
+  return [{ kind: "config", id: "plugins.load.paths", note: `drop missing folder${missing.length > 1 ? "s" : ""} ${missing.join(", ")}`,
+    argv: ["config", "set", "plugins.load.paths", JSON.stringify(paths.filter((p) => !missing.includes(p))), "--strict-json"] }];
+}
+
 export function formatPlan(steps) {
   const title = { clone: "repository clone", repo: "repository", "mcp-install": "MCP server", "mcp-download": "MCP server (release)",
     marketplace: "marketplace", base: "Anthropic base", runtime: "OpenClaw plugin", own: "own plugin (--link)",
@@ -241,7 +268,7 @@ export function formatPlan(steps) {
   return steps.filter((s) => !s.quiet).map((s) => {
     // An unknown step kind is printed as is: a plan that cannot be labelled is no reason to crash.
     const head = `  ${(title[s.kind] || s.kind).padEnd(22)} ${s.id}`;
-    const tail = ["skip", "keep", "keep-config"].includes(s.kind) ? ` — ${s.reason}` : s.kind === "own" ? `  ← ${s.dir}`
+    const tail = ["skip", "keep", "keep-config"].includes(s.kind) ? ` — ${s.reason}` : s.kind === "own" ? `  ← ${s.dir}${s.linked ? " (already linked)" : ""}`
       : ["marketplace", "clone", "repo"].includes(s.kind) ? `  ${s.note} → ${s.dir}`
       : s.note ? `  ${s.note}` : "";
     const warns = (s.warn || []).map((w) => `\n${" ".repeat(26)}⚠ ${w}`).join("");
