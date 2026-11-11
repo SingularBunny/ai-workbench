@@ -70,7 +70,7 @@ NVIDIA (build.nvidia.com): paid — asked for a payment method before issuing a 
 
 ### `HF_TOKEN`
 
-Hugging Face (huggingface.co/settings/tokens): a fine-grained token with inference access; small free credit.
+Hugging Face (huggingface.co/settings/tokens): paid — a new account's calls answer 402 without pre-paid credits (November 2026).
 
 ### `WORKBENCH_FREE_PROVIDERS`
 
