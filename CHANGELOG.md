@@ -21,8 +21,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 - Multi-model page (`aiwb-compare`): several models answer one question side by side; a judge of another family
   picks the most consistent answer (chosen twice in two orders), or one model merges them. Roles default to the
   top free models by Arena rating and the strongest rated model of another family.
-- Multi-model in the chat: a **Several models** composer action opens it as a panel beside the chat, and the
-  chosen or merged answer can be sent to that chat to continue from it.
+- Multi-model in the chat: **Ask several models** under a chat message (OpenClaw fork) opens it as a panel beside the
+  chat with that message as the question, and the chosen or merged answer can be sent to that chat.
 - Groups page (`aiwb-groups`): several agents in one conversation; a manager picks who speaks next, an @mention
   wins, at most 3 agent turns per message; each agent answers with a full turn of its own.
 - Free model providers: with a key in `.env` the installer installs the Groq, Cerebras and Mistral provider packages,

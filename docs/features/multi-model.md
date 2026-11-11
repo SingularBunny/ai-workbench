@@ -6,11 +6,12 @@ most consistent answer, or one model merges them into a single answer. The **Mul
 
 ## In a chat
 
-Under the chat composer, **Several models** opens the same view as a panel beside the chat: type the question
-there (the panel does not read the composer), ask, then **Pick the most consistent** or **Merge**. **Continue
-with the most consistent answer** (or **with the merged answer**) sends it to that chat as an ordinary message —
-the question, which answer it is and from which model — so the chat's agent goes on from it, whatever model or
-runtime the agent uses. Nothing is written to the chat until you press it.
+Under each chat message, next to Reply and Copy Markdown, **Ask several models** (OpenClaw from the fork) opens
+the same view as a panel beside the chat with that message as the question and asks the answering models at once.
+Then **Pick the most consistent** or **Merge**; **Continue with the most consistent answer** (or **with the merged
+answer**) sends it to that chat as an ordinary message — the question, which answer it is and from which model —
+so the chat's agent goes on from it, whatever model or runtime the agent uses. Nothing is written to the chat until
+you press it. Without the fork the button is not there; use the Multi-model page.
 
 ## Roles
 
