@@ -49,6 +49,10 @@ export function settings(ctx) {
     }
   }
 
+  // Multi-model (aiwb-compare, docs/features/multi-model.md) calls the models chosen on its page by name: OpenClaw
+  // lets a plugin pick the model only with this opt-in (docs plugins/sdk-runtime/models.md).
+  out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);
+
   // Semantic memory search with a local embeddings model (llama-cpp plugin, docs
   // plugins/llama-cpp.md): WORKBENCH_LOCAL_EMBEDDINGS=cpu|vulkan[:<GPU index>].
   if (ctx.env.WORKBENCH_LOCAL_EMBEDDINGS) out.push(["memory.search.provider", "local"]);
@@ -126,6 +130,8 @@ export const PLUGINS = {
     { id: "aiwb-fork-settings", dir: "aiwb-plugins/fork-settings", ui: "Proxy" },
     // Office document preview in chat: LibreOffice → PDF (docs/features/document-preview.md).
     { id: "aiwb-office", dir: "aiwb-plugins/office" },
+    // Several models answer one question; a judge picks the most consistent answer (docs/features/multi-model.md).
+    { id: "aiwb-compare", dir: "aiwb-plugins/compare", ui: "Multi-model" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone

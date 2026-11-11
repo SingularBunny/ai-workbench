@@ -18,6 +18,9 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
   permission to save notes there after an approval card for every write (needs `aiwb-memory` 0.2.0).
 - Knowledge base PDF and Office files are searched through Markdown text copies kept by the `aiwb-knowledge-text`
   timer (pdftotext, LibreOffice), outside the knowledge folders.
+- Multi-model page (`aiwb-compare`): several models answer one question side by side; a judge of another family
+  picks the most consistent answer (chosen twice in two orders), or one model merges them. Roles default to the
+  top free models by Arena rating and the strongest rated model of another family.
 
 ### Fixed
 
