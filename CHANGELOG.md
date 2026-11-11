@@ -7,6 +7,11 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ## [Unreleased]
 
+### Added
+
+- Fork packages from the OpenClaw fork's releases page, built on GitHub-hosted runners with signed build
+  provenance (`gh attestation verify`).
+
 ## [0.1.0] - 2026-11-11
 
 First public release.
