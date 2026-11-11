@@ -23,6 +23,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
   top free models by Arena rating and the strongest rated model of another family.
 - Multi-model in the chat: a **Several models** composer action opens it as a panel beside the chat, and the
   chosen or merged answer can be sent to that chat to continue from it.
+- Groups page (`aiwb-groups`): several agents in one conversation; a manager picks who speaks next, an @mention
+  wins, at most 3 agent turns per message; each agent answers with a full turn of its own.
 - Free model providers: with a key in `.env` the installer installs the Groq, Cerebras and Mistral provider packages,
   and Google AI Studio and Groq count as free in Multi-model (Cerebras, NVIDIA, Mistral and Hugging Face now
   charge)

@@ -132,6 +132,8 @@ export const PLUGINS = {
     { id: "aiwb-office", dir: "aiwb-plugins/office" },
     // Several models answer one question; a judge picks the most consistent answer (docs/features/multi-model.md).
     { id: "aiwb-compare", dir: "aiwb-plugins/compare", ui: "Multi-model" },
+    // Several agents in one conversation; a manager picks who speaks next (docs/features/groups.md).
+    { id: "aiwb-groups", dir: "aiwb-plugins/groups", ui: "Groups" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone

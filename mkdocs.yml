@@ -41,6 +41,7 @@ nav:
       - Shared memory: features/memory.md
       - Knowledge base: features/knowledge.md
       - Multi-model: features/multi-model.md
+      - Groups: features/groups.md
       - Chats: features/chats.md
       - Chat archive: features/chat-archive.md
       - Document preview: features/document-preview.md
