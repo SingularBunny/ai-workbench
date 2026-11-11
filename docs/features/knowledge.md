@@ -17,6 +17,19 @@ WORKBENCH_KNOWLEDGE=~/Documents/Vault
 
 A project agent gets both its own folders and the folders for every agent. Run the installer again after a change.
 
+**After adding or removing folders, rebuild the memory indexes.** The set of searched folders is part of each
+agent's index identity: OpenClaw marks the existing index incompatible (`openclaw memory search --json` answers
+`"stale": true` with code `scope`) and returns no results until it is rebuilt, which needs the Gateway stopped:
+
+```bash
+systemctl --user stop openclaw-gateway            # or stop `openclaw gateway run`
+openclaw memory index --agent <id> --force        # for every agent: openclaw agents list
+systemctl --user start openclaw-gateway
+```
+
+The rebuild also re-reads chat transcripts of agents that search their history; with a cloud embedding provider
+it is billed.
+
 What the installer sets:
 
 - the folders for every agent go into `memory.search.extraPaths`, next to the [shared memory](memory.md) folder, and a
