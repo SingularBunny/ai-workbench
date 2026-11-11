@@ -230,9 +230,11 @@ export function keepPinnedBases(steps, { pinOf, installedAt }) {
  * A provider whose key is set counts as free for Multi-model (aiwb-compare freeProviders), so its models can be
  * answering models. WORKBENCH_FREE_PROVIDERS overrides the list: ids separated by commas, or "none".
  */
+// Only providers whose key can still be created without a payment method: in November 2026 Cerebras, NVIDIA and
+// Mistral asked for payment before issuing a key, and a paid key counted as free would let Multi-model spend money.
+// Their models can still be marked free with WORKBENCH_FREE_PROVIDERS.
 export const FREE_TIER_PROVIDERS = {
-  google: ["GEMINI_API_KEY", "GOOGLE_API_KEY"], groq: ["GROQ_API_KEY"], cerebras: ["CEREBRAS_API_KEY"],
-  mistral: ["MISTRAL_API_KEY"], nvidia: ["NVIDIA_API_KEY"], huggingface: ["HF_TOKEN", "HUGGINGFACE_HUB_TOKEN"],
+  google: ["GEMINI_API_KEY", "GOOGLE_API_KEY"], groq: ["GROQ_API_KEY"], huggingface: ["HF_TOKEN", "HUGGINGFACE_HUB_TOKEN"],
 };
 
 export function freeProviderSteps(env) {

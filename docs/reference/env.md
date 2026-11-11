@@ -58,15 +58,15 @@ Groq (console.groq.com): about 30 requests a minute, 1,000 a day.
 
 ### `CEREBRAS_API_KEY`
 
-Cerebras (cloud.cerebras.ai): about 30 requests a minute, 1 million tokens a day.
+Cerebras (cloud.cerebras.ai): paid — asked for a payment method before issuing a key (November 2026).
 
 ### `MISTRAL_API_KEY`
 
-Mistral (console.mistral.ai, Experiment plan): free only with data-training opt-in.
+Mistral (console.mistral.ai): paid — asked for a payment method before issuing a key (November 2026).
 
 ### `NVIDIA_API_KEY`
 
-NVIDIA (build.nvidia.com): NIM endpoints, about 1,000 requests a day.
+NVIDIA (build.nvidia.com): paid — asked for a payment method before issuing a key (November 2026).
 
 ### `HF_TOKEN`
 

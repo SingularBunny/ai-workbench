@@ -22,7 +22,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
   picks the most consistent answer (chosen twice in two orders), or one model merges them. Roles default to the
   top free models by Arena rating and the strongest rated model of another family.
 - Free model providers: with a key in `.env` the installer installs the Groq, Cerebras and Mistral provider packages,
-  and Google AI Studio, Groq, Cerebras, Mistral, NVIDIA and Hugging Face count as free in Multi-model
+  and Google AI Studio, Groq and Hugging Face count as free in Multi-model (Cerebras, NVIDIA and Mistral now
+  charge for a key)
   (`WORKBENCH_FREE_PROVIDERS` overrides).
 
 ### Fixed

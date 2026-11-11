@@ -35,6 +35,8 @@ test("free providers: those whose key is in .env count as free for Multi-model; 
   const { freeProviderSteps } = await import("../lib.mjs");
   const value = (env) => JSON.parse(freeProviderSteps(env)[0].argv[3]);
   assert.deepEqual(value({ GROQ_API_KEY: "g", HF_TOKEN: "h", MISTRAL_API_KEY: " " }), ["groq", "huggingface"]);
+  // A key of a provider that charges (Cerebras, NVIDIA, Mistral in November 2026) does not make it free.
+  assert.deepEqual(freeProviderSteps({ CEREBRAS_API_KEY: "c", NVIDIA_API_KEY: "n", MISTRAL_API_KEY: "m" }), []);
   assert.deepEqual(value({ GOOGLE_API_KEY: "x" }), ["google"]);
   assert.deepEqual(freeProviderSteps({ OPENROUTER_API_KEY: "o" }), []);          // OpenRouter's free models are known by id
   assert.deepEqual(value({ GROQ_API_KEY: "g", WORKBENCH_FREE_PROVIDERS: "ollama, groq" }), ["ollama", "groq"]);
