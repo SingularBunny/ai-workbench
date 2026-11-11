@@ -9,7 +9,7 @@ most consistent answer, or one model merges them into a single answer. The **Mul
 | Role | Default ("auto") | What it does |
 |---|---|---|
 | Answering models | the top free models, one per family, by their [Arena](https://arena.ai) text rating; 3, or 2–6 | answer the question, all at once |
-| Judge | the strongest rated reasoning model of a family none of the answering models is from | picks the most consistent answer |
+| Judge | the strongest rated reasoning model of a family none of the answering models is from, among models with no per-call price (free, or a subscription CLI such as Claude Code); a paid model only when chosen by name | picks the most consistent answer |
 | Merger | the judge | writes one answer from all of them |
 | Default model | the judge | the model to continue with |
 
