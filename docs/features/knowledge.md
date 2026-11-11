@@ -31,5 +31,22 @@ search; the agent can still read them when it knows the path. Symbolic links ins
 the real folder instead. To search with a local model instead of a cloud embedding service, see
 `WORKBENCH_LOCAL_EMBEDDINGS` in the [settings reference](../reference/env.md).
 
-Writing goes through the agent's file tools, so the agent needs write access to the folder (OpenClaw's tool
-settings, or the Claude CLI's own permissions for agents on a Claude subscription).
+## Changes are approved first
+
+Agents keep the knowledge base together with you: before changing anything there, an agent says in the chat which
+notes it will create, edit, move or delete and what changes, and waits for your yes. On top of that, every file
+write inside a knowledge folder stops the turn with an approval card in the chat: which file, and what it becomes
+(the new text, or the replaced and new fragments). **Allow once** lets this write through, **Allow always** stops
+asking for this chat until the Gateway restarts, **Deny** refuses it and the agent is told so.
+
+The card covers writes through file tools: OpenClaw's `write`, `edit` and `apply_patch`, and the Claude CLI's
+Write and Edit. Two limits:
+
+- A Claude CLI session in the `bypassPermissions` mode does not ask OpenClaw before its own Write and Edit, so
+  there is no card; the agent's rule to ask in the chat still applies. Use the `default` or `acceptEdits` mode for
+  chats that edit the knowledge base.
+- A shell command that writes a file (`sed -i`, `echo >`) cannot be checked in advance; agents are told to write
+  notes only with file tools.
+
+The agent needs write access to the folder: OpenClaw's tool settings, or the Claude CLI's own permissions for
+agents on a Claude subscription.

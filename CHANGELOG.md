@@ -15,7 +15,7 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
   `~/.openclaw/.env` key, generated from `.env.example`; the gate fails when a key the code reads is undescribed.
 - Knowledge base: folders of notes (an Obsidian vault is one) for every agent (`WORKBENCH_KNOWLEDGE`) and per
   project (`knowledge` in `project.json`), searched by memory search and named in each agent's context, with
-  permission to save notes there (needs `aiwb-memory` 0.2.0).
+  permission to save notes there after an approval card for every write (needs `aiwb-memory` 0.2.0).
 
 ## [0.1.0] - 2026-11-11
 
