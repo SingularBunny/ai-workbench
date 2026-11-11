@@ -1,7 +1,7 @@
 # Keys
 
 `~/.openclaw/.env` is created with the Gateway token. Add at least one model key — see
-`.env.example` for a template:
+`.env.example` for a template and the [Settings reference](../reference/env.md) for every key:
 
 ```bash
 $EDITOR ~/.openclaw/.env      # OPENROUTER_API_KEY=… and/or ANTHROPIC_API_KEY=…

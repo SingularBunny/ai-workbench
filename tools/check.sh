@@ -78,6 +78,7 @@ else
 fi
 
 out=$(python3 tools/check_links.py 2>&1) && ok "links in the docs" || fail "links:\n$out"
+out=$(python3 tools/env_reference.py --check 2>&1) && ok "$out" || fail "settings reference:\n$out"
 
 if git rev-parse --git-dir >/dev/null 2>&1; then
   tracked=$(git ls-files .env "*/.env" "*.pem" "*id_ed25519*" "*id_rsa*")

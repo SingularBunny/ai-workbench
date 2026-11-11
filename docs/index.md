@@ -32,7 +32,7 @@ preview, scheduled-tasks MCP) live in the public repository
 
 ## Getting started
 
-1. [Installation](install/index.md) → [keys](install/keys.md) → [running](install/run.md) → [backup](install/backup.md).
+1. [First run](install/first-run.md): from a clean machine to the first chat. In detail: [Installation](install/index.md) → [keys](install/keys.md) → [running](install/run.md) → [backup](install/backup.md).
 2. A Claude subscription instead of an API key — [Keys](install/keys.md#claude-subscription).
 3. Moving from Claude Desktop — [Projects](features/projects.md), [Shared memory](features/memory.md),
    [Chats](features/chats.md).

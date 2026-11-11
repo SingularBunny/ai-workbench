@@ -11,6 +11,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 - Fork packages from the OpenClaw fork's releases page, built on GitHub-hosted runners with signed build
   provenance (`gh attestation verify`).
+- Documentation: a first-run page (from a clean machine to the first chat) and a settings reference of every
+  `~/.openclaw/.env` key, generated from `.env.example`; the gate fails when a key the code reads is undescribed.
 
 ## [0.1.0] - 2026-11-11
 

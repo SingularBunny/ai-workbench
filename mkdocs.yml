@@ -24,9 +24,11 @@ nav:
   - Home: index.md
   - Installation:
       - install/index.md
+      - First run: install/first-run.md
       - Keys: install/keys.md
       - Running: install/run.md
       - Network and proxy: install/network.md
+      - Backup: install/backup.md
       - Update and uninstall: install/update-uninstall.md
       - Model and Claude CLI on a VM: install/remote-vm.md
   - OpenClaw from a fork: openclaw-fork.md
@@ -40,10 +42,14 @@ nav:
       - Chat archive: features/chat-archive.md
       - Document preview: features/document-preview.md
       - Chat files: features/chat-files.md
+      - Interactive widgets: features/widgets.md
+      - Notifications: features/notifications.md
+      - Claude usage: features/claude-usage.md
   - Integrations:
       - JetBrains IDE: integrations/jetbrains.md
       - Chrome extension: integrations/chrome.md
   - Reference:
+      - Settings: reference/env.md
       - Differences from Claude Code: reference/differences.md
   - Development:
       - Validating the installer in Docker: development/validation.md
