@@ -44,3 +44,8 @@ Uninstalling removes its own links.
 
 `project.json` can also list folders whose files the project's chats open and download, any file type
 (OpenClaw from the fork): `"chatFileFolders": ["~/Projects/reports"]`. See [Chat files](chat-files.md).
+
+## Knowledge base
+
+`"knowledge": ["~/Projects/garden/notes"]` in `project.json` gives the project's agent its own knowledge base
+folders, searched and written to like the folders for every agent. See [Knowledge base](knowledge.md).

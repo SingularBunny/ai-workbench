@@ -60,6 +60,12 @@ Where your own plugins are cloned; default ~/.local/share/ai-workbench/plugins.
 
 Grafana MCP (if the profile defines it): installed only when the URL is set. A token, or login and password.
 
+## Knowledge base
+
+### `WORKBENCH_KNOWLEDGE`
+
+Knowledge base folders for every agent, separated by ":" (an Obsidian vault is one; [features/knowledge.md](../features/knowledge.md)): agents search the Markdown notes there with memory search and may save notes there. Per project: "knowledge" in project.json. Not / or the home folder itself.
+
 ## Chat
 
 ### `WORKBENCH_MCP_APPS`

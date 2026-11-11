@@ -135,6 +135,8 @@ su - tester -c "echo OPENROUTER_API_KEY=dummy-validate-only >> ~/.openclaw/.env"
 echo "export WORKBENCH_DEFAULT_MODEL= WORKBENCH_DEFAULT_RUNTIME= WORKBENCH_FALLBACK_MODELS= WORKBENCH_DREAMING_MODEL= WORKBENCH_JUDGE_MODEL= WORKBENCH_JUDGE_CRITERIA=" >> /home/tester/.profile
 # The projects folder of the made-up Claude Code chats (container_check_catalog.sh): the installer passes it to the bridge.
 su - tester -c "echo WORKBENCH_CLAUDE_DESKTOP_ROOT=/home/tester/claude-projects >> ~/.openclaw/.env"
+# Knowledge base for every agent: a folder of notes, the note in a subfolder as in an Obsidian vault.
+su - tester -c "mkdir -p ~/knowledge/garden && echo The orchard quince is pruned in late February. > ~/knowledge/garden/pruning.md && echo WORKBENCH_KNOWLEDGE=~/knowledge >> ~/.openclaw/.env"
 # Fork presets: with the fork package catalog-owner is checked by container_check_projects.sh; without it the
 # installer skips them and the owner-mark check is skipped too.
 su - tester -c "echo WORKBENCH_FORK_PRESETS=worker-limits,catalog-owner >> ~/.openclaw/.env"
@@ -178,7 +180,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
 [[ "$REINSTALL" == 1 ]] && su - tester -c "bash /opt/ai-workbench/tools/container_check_migration.sh \"$INSTALL_ARGS\""
 '
 # Log lines the result is read from; shared by a single run and the summary.
-KEY='MIGRATION_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
+KEY='MIGRATION_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|KNOWLEDGE_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
 
 run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<name><-clean>/
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"

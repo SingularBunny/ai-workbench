@@ -38,6 +38,7 @@ nav:
       - Scheduled tasks: features/scheduled-tasks.md
       - Projects: features/projects.md
       - Shared memory: features/memory.md
+      - Knowledge base: features/knowledge.md
       - Chats: features/chats.md
       - Chat archive: features/chat-archive.md
       - Document preview: features/document-preview.md

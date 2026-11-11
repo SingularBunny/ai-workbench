@@ -20,6 +20,14 @@ if ws=$(openclaw config get agents.entries.main.workspace 2>/dev/null | tr -d '"
   # The shared file shows as a path outside the agent's workspace: ../../<shared folder>/memory/<fact>.
   grep -qE "\"path\": \"\.\./[^\"]*/$(basename "$(dirname "$shared")")/memory/$fact\"" /out/memory-search.json; echo "MEMORY_GLOBAL_FOUND=$?"
 fi
+# Knowledge base (WORKBENCH_KNOWLEDGE): the folder is in every agent's memory search and named in the aiwb-memory config;
+# a search finds the note in its subfolder.
+if grep -q '^WORKBENCH_KNOWLEDGE=' ~/.openclaw/.env; then
+  openclaw config get plugins.entries.aiwb-memory.config --json 2>/dev/null | grep -q "$HOME/knowledge"; echo "KNOWLEDGE_IN_PROMPT_CONFIG=$?"
+  openclaw memory index --agent main >/out/knowledge-index.log 2>&1; echo "KNOWLEDGE_INDEX=$?"
+  openclaw memory search --agent main --query "when is the orchard quince pruned" --max-results 20 --json 2>/dev/null >/out/knowledge-search.json
+  grep -q 'garden/pruning.md' /out/knowledge-search.json; echo "KNOWLEDGE_FOUND=$?"
+fi
 # Project skills (project.json "skills"): the agent sees the version from its own working folder, not the shared one.
 python3 - <<'PY'
 import glob, json, subprocess

@@ -4,6 +4,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 
+import { hasKnowledge, knowledgeScopes } from "./knowledge.mjs";
+
 /**
  * A plugin's dependency file: sibling plugins (`../<folder>`, `~/<path>`) and tools it needs. The key
  * names are the file's format; a profile with plugins in another format sets its own (DEPENDENCIES).
@@ -435,8 +437,10 @@ export function projectSteps(projects) {
     if (p.id === "main") throw new Error(`project ${p.dir}: id main is taken by OpenClaw's default agent`);
     if (seen.has(p.id)) throw new Error(`two projects with id ${p.id}`);
     seen.add(p.id);
-    return { kind: "config", id: `agents.entries.${p.id}`, note: `${p.name} → ${p.dir}`,
-      argv: ["config", "set", `agents.entries.${p.id}`, JSON.stringify({ workspace: p.dir, identity: { name: p.name } }), "--strict-json"] };
+    // Project knowledge folders (installer/knowledge.mjs) are added to this agent's memory search only.
+    const memory = p.knowledgeDirs?.length ? { memory: { search: { extraPaths: p.knowledgeDirs } } } : {};
+    return { kind: "config", id: `agents.entries.${p.id}`, note: `${p.name} → ${p.dir}${p.knowledgeDirs?.length ? ` (knowledge: ${p.knowledgeDirs.join(", ")})` : ""}`,
+      argv: ["config", "set", `agents.entries.${p.id}`, JSON.stringify({ workspace: p.dir, identity: { name: p.name }, ...memory }), "--strict-json"] };
   });
 }
 
@@ -445,12 +449,39 @@ export function projectSteps(projects) {
  * searched by memory_search of all agents (memory.search.extraPaths for shared notes, docs reference/memory-config.md).
  * The profile sets the whole extraPaths list. No evergreen: OpenClaw 2026.10.10 does not know it.
  */
-export function mainSteps({ dir, sharedSearch = true }) {
+export function mainSteps({ dir, sharedSearch = true, knowledge }) {
   return [
     { kind: "config", id: "agents.entries.main.workspace", note: `main → ${dir}`,
       argv: ["config", "set", "agents.entries.main.workspace", JSON.stringify(dir), "--strict-json"] },
-    ...(sharedSearch ? [{ kind: "config", id: "memory.search.extraPaths", note: `shared memory → ${path.join(dir, "memory")}`,
-      argv: ["config", "set", "memory.search.extraPaths", JSON.stringify([path.join(dir, "memory")]), "--strict-json"] }] : []),
+    ...(sharedSearch ? [extraPathsStep([path.join(dir, "memory")], knowledge)] : []),
+  ];
+}
+
+/** memory.search.extraPaths of all agents: the shared memory folder plus the knowledge folders for everyone. */
+function extraPathsStep(memoryDirs, knowledge) {
+  const dirs = [...memoryDirs, ...(knowledge?.all ?? [])];
+  const note = [...memoryDirs.map((d) => `shared memory → ${d}`), ...(knowledge?.all ?? []).map((d) => `knowledge → ${d}`)].join(", ");
+  return { kind: "config", id: "memory.search.extraPaths", note,
+    argv: ["config", "set", "memory.search.extraPaths", JSON.stringify(dirs), "--strict-json"] };
+}
+
+/** aiwb-memory adds to the system prompt (before_prompt_build); OpenClaw calls this hook only with both permissions. */
+const memoryHooksStep = () => ({ kind: "config", id: "plugins.entries.aiwb-memory.hooks",
+  argv: ["config", "set", "plugins.entries.aiwb-memory.hooks", JSON.stringify({ allowConversationAccess: true, allowPromptInjection: true }), "--strict-json"] });
+
+/**
+ * Knowledge folders without a shared memory folder (installer/knowledge.mjs): the folders for everyone go into
+ * memory.search.extraPaths unless the main agent's memory step already carries them (searchSet), and aiwb-memory
+ * tells each agent its folders.
+ */
+export function knowledgeSteps({ knowledge, searchSet = false }) {
+  if (!hasKnowledge(knowledge)) return [];
+  return [
+    ...(!searchSet && knowledge.all.length ? [extraPathsStep([], knowledge)] : []),
+    { kind: "config", id: "plugins.entries.aiwb-memory.config", note: "knowledge base folders in the agents' context",
+      ...(knowledge.warn.length ? { warn: knowledge.warn } : {}),
+      argv: ["config", "set", "plugins.entries.aiwb-memory.config", JSON.stringify({ knowledge: knowledgeScopes(knowledge) }), "--strict-json"] },
+    memoryHooksStep(),
   ];
 }
 
@@ -460,16 +491,16 @@ export function mainSteps({ dir, sharedSearch = true }) {
  * memory_search of all agents. The folder is not an agent workspace: OpenClaw stops putting an
  * agent's root MEMORY.md and USER.md into context once someone other than the agent edits them.
  */
-export function sharedMemorySteps({ dir }) {
+export function sharedMemorySteps({ dir, knowledge }) {
+  const config = { dir, ...(hasKnowledge(knowledge) ? { knowledge: knowledgeScopes(knowledge) } : {}) };
   return [
-    { kind: "config", id: "memory.search.extraPaths", note: `shared memory → ${path.join(dir, "memory")}`,
-      argv: ["config", "set", "memory.search.extraPaths", JSON.stringify([path.join(dir, "memory")]), "--strict-json"] },
+    extraPathsStep([path.join(dir, "memory")], knowledge),
     { kind: "config", id: "plugins.entries.aiwb-memory.config", note: `shared memory → ${dir}`,
-      argv: ["config", "set", "plugins.entries.aiwb-memory.config", JSON.stringify({ dir }), "--strict-json"] },
+      ...(knowledge?.warn.length ? { warn: knowledge.warn } : {}),
+      argv: ["config", "set", "plugins.entries.aiwb-memory.config", JSON.stringify(config), "--strict-json"] },
     // The plugin appends text to the system prompt (before_prompt_build): OpenClaw calls this hook
     // only with both permissions, although the plugin does not read the conversation (docs plugins/agent-guidance.md).
-    { kind: "config", id: "plugins.entries.aiwb-memory.hooks",
-      argv: ["config", "set", "plugins.entries.aiwb-memory.hooks", JSON.stringify({ allowConversationAccess: true, allowPromptInjection: true }), "--strict-json"] },
+    memoryHooksStep(),
   ];
 }
 

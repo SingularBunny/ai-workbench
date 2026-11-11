@@ -17,7 +17,8 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { knowledgeFolders } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import * as PUBLIC from "../openclaw/workbench.config.mjs";
 const { OPENCLAW_VERSION, PLUGIN_RENAMES } = PUBLIC;
@@ -378,17 +379,26 @@ async function main() {
     try {
       projectMeta = found.map((d) => {
         const meta = JSON.parse(readFileSync(path.join(dir, d, "project.json"), "utf8"));
-        return { id: meta.id, name: meta.name, dir: path.join(dir, d), skills: meta.skills, chatFileFolders: meta.chatFileFolders };
+        return { id: meta.id, name: meta.name, dir: path.join(dir, d), skills: meta.skills, chatFileFolders: meta.chatFileFolders,
+          knowledge: meta.knowledge };
       });
-      projects = projectSteps(projectMeta);
+    } catch (e) { console.error(String(e.message)); return 1; }
+  }
+  // Knowledge base (WORKBENCH_KNOWLEDGE, per project knowledge): folders in memory search, named in each agent's context.
+  const knowledge = knowledgeFolders({ global: env.WORKBENCH_KNOWLEDGE, projects: projectMeta, home, exists: existsSync });
+  if (PROJECTS) {
+    try {
+      projects = projectSteps(projectMeta.map((p) => ({ ...p, knowledgeDirs: knowledge.byProject[p.id] })));
     } catch (e) { console.error(String(e.message)); return 1; }
   }
   // Shared memory: the main agent's folder in the data repository, if moved there (memory.mjs).
   const mainDir = MAIN && path.resolve(profileRoot, MAIN.dir);
   // Shared memory of all agents (SHARED_MEMORY) has its own folder; without it, the main agent's memory/ stays shared.
   const sharedDir = SHARED_MEMORY && path.resolve(profileRoot, SHARED_MEMORY.dir);
-  const shared = sharedDir && existsSync(sharedDir) ? sharedMemorySteps({ dir: sharedDir }) : [];
-  const main = [...(mainDir && existsSync(mainDir) ? mainSteps({ dir: mainDir, sharedSearch: !shared.length }) : []), ...shared];
+  const shared = sharedDir && existsSync(sharedDir) ? sharedMemorySteps({ dir: sharedDir, knowledge }) : [];
+  const mainOwn = mainDir && existsSync(mainDir) ? mainSteps({ dir: mainDir, sharedSearch: !shared.length, knowledge }) : [];
+  const main = [...mainOwn, ...shared,
+    ...(shared.length ? [] : knowledgeSteps({ knowledge, searchSet: mainOwn.some((s) => s.id === "memory.search.extraPaths") }))];
   // Profile hooks (GIT_HOOKS): a symlink in .git/hooks, so the secrets check works on a new machine too.
   const linkTarget = (p) => {
     try { const st = lstatSync(p); return st.isSymbolicLink() ? path.resolve(path.dirname(p), readlinkSync(p)) : "(file)"; } catch { return null; }

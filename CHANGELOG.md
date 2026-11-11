@@ -13,6 +13,9 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
   provenance (`gh attestation verify`).
 - Documentation: a first-run page (from a clean machine to the first chat) and a settings reference of every
   `~/.openclaw/.env` key, generated from `.env.example`; the gate fails when a key the code reads is undescribed.
+- Knowledge base: folders of notes (an Obsidian vault is one) for every agent (`WORKBENCH_KNOWLEDGE`) and per
+  project (`knowledge` in `project.json`), searched by memory search and named in each agent's context, with
+  permission to save notes there (needs `aiwb-memory` 0.2.0).
 
 ## [0.1.0] - 2026-11-11
 

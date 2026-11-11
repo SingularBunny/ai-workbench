@@ -34,7 +34,7 @@ preview, scheduled-tasks MCP) live in the public repository
 
 1. [First run](install/first-run.md): from a clean machine to the first chat. In detail: [Installation](install/index.md) → [keys](install/keys.md) → [running](install/run.md) → [backup](install/backup.md).
 2. A Claude subscription instead of an API key — [Keys](install/keys.md#claude-subscription).
-3. Moving from Claude Desktop — [Projects](features/projects.md), [Shared memory](features/memory.md),
+3. Moving from Claude Desktop — [Projects](features/projects.md), [Shared memory](features/memory.md), [Knowledge base](features/knowledge.md),
    [Chats](features/chats.md).
 4. Your own OpenClaw with changes — [OpenClaw from a fork](openclaw-fork.md).
 5. Artifacts in chat — [Interactive widgets](features/widgets.md), [Document preview](features/document-preview.md),
