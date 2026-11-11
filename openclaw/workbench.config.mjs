@@ -53,6 +53,10 @@ export function settings(ctx) {
   // lets a plugin pick the model only with this opt-in (docs plugins/sdk-runtime/models.md).
   out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);
 
+  // Groups (aiwb-groups, docs/features/groups.md) takes each agent's reply from the agent_end hook, which OpenClaw
+  // gives a non-bundled plugin only with this opt-in (docs plugins/sdk-runtime.md).
+  out.push(["plugins.entries.aiwb-groups.hooks.allowConversationAccess", true]);
+
   // Semantic memory search with a local embeddings model (llama-cpp plugin, docs
   // plugins/llama-cpp.md): WORKBENCH_LOCAL_EMBEDDINGS=cpu|vulkan[:<GPU index>].
   if (ctx.env.WORKBENCH_LOCAL_EMBEDDINGS) out.push(["memory.search.provider", "local"]);

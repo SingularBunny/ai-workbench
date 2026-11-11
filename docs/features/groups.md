@@ -25,6 +25,9 @@ for this group (`agent:<id>:aiwb-group-<group>`), so its ordinary chats are not 
 is in the group; then each turn it gets what the user and the other agents said since its last reply, each line
 marked with the speaker. The manager is an agent too (Main by default): it gets a short, tool-free question.
 
+The reply is taken when the agent's turn ends (the `agent_end` hook), so the installer sets
+`plugins.entries.aiwb-groups.hooks.allowConversationAccess`; without it the round waits and stops after 15 minutes.
+
 ## Groups
 
 **New group**: pick 2–8 configured agents, the manager and the number of agent turns per message. **Change**
