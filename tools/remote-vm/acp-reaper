@@ -1,0 +1,4 @@
+#!/bin/bash
+# Runs the ACP agent; when it exits (ssh drop -> end of stdin) kills the whole process group.
+trap 'kill -- -$$ 2>/dev/null' EXIT
+"$@"

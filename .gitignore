@@ -1,0 +1,11 @@
+.env
+dist/
+__pycache__/
+.pytest_cache/
+
+# Personal development setup (agent rules, IDE agent settings) lives in the personal profile; only symlinks here.
+/CLAUDE.md
+/PROMPT.md
+/.claude
+site/
+.idea/

@@ -1,0 +1,49 @@
+site_name: ai-workbench
+site_description: A local replacement for Claude Desktop built on OpenClaw
+docs_dir: docs
+strict: true
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - search.highlight
+    - content.code.copy
+markdown_extensions:
+  - tables
+  - admonition
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.superfences
+  - pymdownx.highlight
+nav:
+  - Home: index.md
+  - Installation:
+      - install/index.md
+      - Keys: install/keys.md
+      - Running: install/run.md
+      - Network and proxy: install/network.md
+      - Update and uninstall: install/update-uninstall.md
+      - Model and Claude CLI on a VM: install/remote-vm.md
+  - OpenClaw from a fork: openclaw-fork.md
+  - Features:
+      - Judge: features/judge.md
+      - Evals on non-Claude models: features/evals.md
+      - Scheduled tasks: features/scheduled-tasks.md
+      - Projects: features/projects.md
+      - Shared memory: features/memory.md
+      - Chats: features/chats.md
+      - Chat archive: features/chat-archive.md
+      - Document preview: features/document-preview.md
+      - Chat files: features/chat-files.md
+  - Integrations:
+      - JetBrains IDE: integrations/jetbrains.md
+      - Chrome extension: integrations/chrome.md
+  - Reference:
+      - Differences from Claude Code: reference/differences.md
+  - Development:
+      - Validating the installer in Docker: development/validation.md

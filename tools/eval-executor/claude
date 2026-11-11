@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""`claude -p` stand-in for eval runners — see tools/eval_executor.py.
+
+    PATH=<ai-workbench>/tools/eval-executor:$PATH CLAUDE_EVAL_MODEL=<model> python3 <eval runner> …
+
+Key: WORKBENCH_EVAL_API_KEY or OPENROUTER_API_KEY; URL: WORKBENCH_EVAL_BASE_URL
+(OpenRouter by default); from the environment on top of ~/.openclaw/.env. The environment proxy
+is not used (the key does not go through third-party proxies); to use one, set WORKBENCH_EVAL_PROXY.
+"""
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import uuid
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from eval_executor import ExecError, cli_output, http_error, openai_text, openclaw_text, parse_args, resolve  # noqa: E402
+
+TIMEOUT_SECONDS = 300  # assigned, not measured: when to treat a call as hung, not an acceptance threshold
+
+
+def load_env() -> dict:
+    """Environment on top of ~/.openclaw/.env — same as the judge (aiwb-plugins/judge/skills/judge)."""
+    merged, f = {}, Path.home() / ".openclaw" / ".env"
+    if f.is_file():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip() and not key.lstrip().startswith("#"):
+                merged[key.strip()] = value.strip()
+    merged.update({k: v for k, v in os.environ.items() if v})
+    return merged
+
+
+def call_openai(model: str, prompt: str, env: dict) -> str:
+    proxy = env.get("WORKBENCH_EVAL_PROXY", "")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy} if proxy else {}))
+    base = env.get("WORKBENCH_EVAL_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    key = env.get("WORKBENCH_EVAL_API_KEY") or env.get("OPENROUTER_API_KEY", "")
+    req = urllib.request.Request(f"{base}/chat/completions",
+                                 data=json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}]}).encode(),
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        with opener.open(req, timeout=TIMEOUT_SECONDS) as resp:
+            return openai_text(json.load(resp))
+    except urllib.error.HTTPError as exc:
+        raise http_error(exc.code, exc.read().decode(errors="replace")) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise ExecError(f"Connection error: {exc}") from exc
+
+
+def call_openclaw(model: str, prompt: str, env: dict) -> str:
+    with tempfile.NamedTemporaryFile("w", suffix=".md", encoding="utf-8", delete=False) as f:
+        f.write(prompt)
+    # A new session per call: in a shared session a scenario would see the previous ones' conversation
+    # and measurements would contaminate each other (without --session-id everything went to agent:main:main).
+    cmd = [env.get("OPENCLAW_BIN", "openclaw"), "agent", "--local", "--agent", env.get("WORKBENCH_EVAL_AGENT", "main"),
+           "--session-id", f"eval-{uuid.uuid4()}", "--message-file", f.name, "--json"] + (["--model", model] if model else [])
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+    except FileNotFoundError as exc:
+        raise ExecError("Request not allowed: openclaw not found in PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ExecError(f"timeout {TIMEOUT_SECONDS}s") from exc
+    finally:
+        os.unlink(f.name)
+    return openclaw_text(r.stdout or r.stderr)
+
+
+def main() -> int:
+    c = parse_args(sys.argv[1:])
+    model, text, error = c.model, "", None
+    try:
+        if c.tools:
+            raise ExecError("Request not allowed: this executor does not provide tools (--allowedTools) — "
+                            "kind: live scenarios run only with claude")
+        env = load_env()
+        executor, name = resolve(c.model, env)
+        model = f"{executor}:{name}" if executor == "openclaw" else name
+        prompt = c.prompt if c.prompt is not None else sys.stdin.read()
+        text = (call_openclaw if executor == "openclaw" else call_openai)(name, prompt, env)
+    except ExecError as exc:
+        error = str(exc)
+    out, code = cli_output(text, error, model, c.output_json)
+    print(out)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
