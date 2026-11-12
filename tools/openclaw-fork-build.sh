@@ -32,6 +32,8 @@ echo "Fork: $src ($branch, $rev) → $out; build: pnpm $build"
 # network, so a proxy on the host's localhost works too.
 net=()
 [[ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]] && net=(--network host -e HTTPS_PROXY -e HTTP_PROXY -e NO_PROXY)
+# A loaded machine can outlast the packer's 5-minute inventory step; OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS raises it.
+[[ -n "${OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS:-}" ]] && net+=(-e OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS)
 git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i "${net[@]}" \
   -e BUILD="$build" -e GIT_COMMIT="$commit" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e HOME=/tmp/home -e OPENCLAW_CONTROL_UI_RELEASE_BUILD=1 -e CI=1 \
   -v aiwb-openclaw-pnpm:/pnpm-store -v "$out":/out "$image" bash -euo pipefail -c '
