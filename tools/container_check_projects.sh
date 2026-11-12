@@ -186,9 +186,10 @@ turn = [c for c in calls if "--replay-user-messages" in c["argv"]]
 c = turn[-1] if turn else {}
 print(f"PROJECTS_NEW_CHAT_CWD={0 if c.get('cwd') == cwd else 1}")
 print(f"PROJECTS_CWD_KEEPS_INSTRUCTIONS={0 if 'CWD_KEEPS_MARK' in json.dumps(c.get('initialize', {}), ensure_ascii=False) else 1}")
+# The chat is found by its content: by modification time another file written in the same second could win.
 files = sorted(glob.glob(f"{d}/*.jsonl"), key=os.path.getmtime)
-newest = files[-1] if files else ""
-print(f"PROJECTS_NEW_CHAT_IN_PROJECT_FOLDER={0 if newest and 'New chat' in open(newest).read() else 1}")
+newest = next((f for f in reversed(files) if "New chat" in open(f).read()), "")
+print(f"PROJECTS_NEW_CHAT_IN_PROJECT_FOLDER={0 if newest else 1}")
 open("/tmp/projects-new-thread", "w").write(os.path.basename(newest)[:-6] if newest else "")
 PY2
 [[ "$(adopt_run)" == "adopted 0, errors 0" ]]; echo "PROJECTS_NEW_CHAT_NOT_IMPORTED=$?"
