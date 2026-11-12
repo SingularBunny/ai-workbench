@@ -523,6 +523,14 @@ test("how the IDE launches openclaw: env-node script via the adjacent Node; wrap
   assert.deepEqual(acpLaunch({ ...wrap, firstLine: "\u007fELF" }).args, ["acp"]);
 });
 
+test("Claude CLI turns: unmanaged only with the fork package, background agents on managed turns", () => {
+  const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
+  const plain = get({});
+  assert.ok(!("plugins.entries.anthropic.config.managedTurns" in plain));
+  assert.deepEqual(plain["plugins.entries.anthropic.config.managedNativeTools.default"], ["Agent", "Workflow"]);
+  assert.equal(get({ WORKBENCH_OPENCLAW_PACKAGE: "/p/openclaw.tgz" })["plugins.entries.anthropic.config.managedTurns"], false);
+});
+
 test("default model: runtime and fallbacks only when set", () => {
   const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
   const plain = get({});

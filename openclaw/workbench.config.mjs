@@ -57,6 +57,9 @@ export function settings(ctx) {
   // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them. Only with the fork:
   // the official build's anthropic plugin rejects unknown keys.
   if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.managedTurns", false]);
+  // Managed turns (the official build, or the fork with the switch on) keep Claude's background agents and
+  // workflows: OpenClaw allows exactly these two native tools there (managedNativeTools, docs gateway/cli-backends.md).
+  out.push(["plugins.entries.anthropic.config.managedNativeTools.default", ["Agent", "Workflow"]]);
 
   // Groups (aiwb-groups, docs/features/groups.md) takes each agent's reply from the agent_end hook, which OpenClaw
   // gives a non-bundled plugin only with this opt-in (docs plugins/sdk-runtime.md).
