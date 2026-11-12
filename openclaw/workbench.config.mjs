@@ -54,8 +54,9 @@ export function settings(ctx) {
   out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);
 
   // Claude CLI turns stay unmanaged (fork F62): since 2026.11 OpenClaw runs them without Claude Code's own tools,
-  // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them.
-  out.push(["plugins.entries.anthropic.config.managedTurns", false]);
+  // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them. Only with the fork:
+  // the official build's anthropic plugin rejects unknown keys.
+  if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.managedTurns", false]);
 
   // Groups (aiwb-groups, docs/features/groups.md) takes each agent's reply from the agent_end hook, which OpenClaw
   // gives a non-bundled plugin only with this opt-in (docs plugins/sdk-runtime.md).
