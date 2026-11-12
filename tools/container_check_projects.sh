@@ -152,7 +152,7 @@ python3 - <<'PY2'
 import glob, json
 ids = json.load(open("/tmp/catalog-ids.json"))
 calls = [json.load(open(f)) for f in glob.glob("/tmp/fake-claude-projects/call-*.json")]
-turn = [c["argv"] for c in calls if "--plugin-dir" in c["argv"]]
+turn = [c["argv"] for c in calls if "--replay-user-messages" in c["argv"]]
 a = turn[-1] if turn else []
 print("PROJECTS_TURN_FLAGS", " ".join(x for x in a if x.startswith("--")))
 ok = "--resume" in a and a[a.index("--resume") + 1] == ids["long"] and "--fork-session" in a
@@ -164,7 +164,7 @@ rm -rf "$FAKE_CLAUDE_LOG"; openclaw agent --session-key "$lk" -m "More" --json >
 python3 - <<'PY2'
 import glob, json
 ids = json.load(open("/tmp/catalog-ids.json"))
-turn = [c["argv"] for c in (json.load(open(f)) for f in glob.glob("/tmp/fake-claude-projects/call-*.json")) if "--plugin-dir" in c["argv"]]
+turn = [c["argv"] for c in (json.load(open(f)) for f in glob.glob("/tmp/fake-claude-projects/call-*.json")) if "--replay-user-messages" in c["argv"]]
 a = turn[-1] if turn else []
 ok = "--resume" in a and a[a.index("--resume") + 1] != ids["long"] and "--fork-session" not in a
 print(f"PROJECTS_SECOND_TURN_IN_FORK={0 if ok else 1}")
@@ -182,7 +182,7 @@ import glob, json, os
 home = os.path.expanduser("~"); cwd = f"{home}/claude-projects/Сад"
 d = os.path.join(home, ".claude/projects", "".join(c if c.isascii() and c.isalnum() else "-" for c in cwd))
 calls = [json.load(open(f)) for f in glob.glob("/tmp/fake-claude-projects/call-*.json")]
-turn = [c for c in calls if "--plugin-dir" in c["argv"]]
+turn = [c for c in calls if "--replay-user-messages" in c["argv"]]
 c = turn[-1] if turn else {}
 print(f"PROJECTS_NEW_CHAT_CWD={0 if c.get('cwd') == cwd else 1}")
 print(f"PROJECTS_CWD_KEEPS_INSTRUCTIONS={0 if 'CWD_KEEPS_MARK' in json.dumps(c.get('initialize', {}), ensure_ascii=False) else 1}")
@@ -251,7 +251,7 @@ openclaw agent --session-key "agent:main:dashboard:memory-check" -m "What do you
 python3 - <<'PY2'
 import glob, json
 calls = [json.load(open(f)) for f in glob.glob("/tmp/fake-claude-projects/call-*.json")]
-inits = [json.dumps(c.get("initialize", {}), ensure_ascii=False) for c in calls if "--plugin-dir" in c["argv"]]
+inits = [json.dumps(c.get("initialize", {}), ensure_ascii=False) for c in calls if "--replay-user-messages" in c["argv"]]
 print("PROJECTS_MEMORY_TURNS", len(inits))
 ok = len(inits) >= 2 and all("SHARED_USER_MARK" in i and "SHARED_INDEX_MARK" in i for i in inits)
 print(f"PROJECTS_SHARED_MEMORY_IN_PROMPT={0 if ok else 1}")

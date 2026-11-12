@@ -24,12 +24,14 @@ restart() { pkill -u "$(id -u)" -f '^openclaw-gateway'; for i in $(seq 1 30); do
 restart
 openclaw agent --agent main -m "Hello" --json > /tmp/cli-turn.json 2>&1; echo "CLI_TURN_EXIT=$?"
 grep -q FAKE_CLAUDE_OK /tmp/cli-turn.json; echo "CLI_REPLY_FROM_CLAUDE=$?"
-python3 - <<'PY'
-import glob, json
+# The fork's managedTurns: false (F62) must give an unmanaged turn; otherwise OpenClaw manages it (2026.11+).
+unmanaged=$(openclaw config get plugins.entries.anthropic.config.managedTurns 2>/dev/null | tail -1)
+UNMANAGED=$([[ "$unmanaged" == false ]] && echo 1 || echo 0) python3 - <<'PY'
+import glob, json, os
 calls = [json.load(open(f)) for f in glob.glob("/tmp/fake-claude/call-*.json")]
 print("CLI_CALLS", len(calls))
-# The agent turn is the call with the agent's skills (--plugin-dir); the rest are internal.
-turn = [x for x in calls if "--plugin-dir" in x["argv"]]
+# The agent turn is the conversation call (--replay-user-messages), managed or not; the rest are internal.
+turn = [x for x in calls if "--replay-user-messages" in x["argv"]]
 c = turn[-1] if turn else {"argv": []}
 a = c["argv"]
 prompt = c.get("systemPrompt", "") + json.dumps(c.get("initialize", {}), ensure_ascii=False)
@@ -38,7 +40,11 @@ def ok(name, cond): print(f"{name}={0 if cond else 1}")
 ok("CLI_PRINT_MODE", ("-p" in a or "--print" in a) and "stream-json" in a)
 ok("CLI_MODEL_OPUS", "--model" in a and "opus" in a[a.index("--model") + 1])
 ok("CLI_WORKSPACE_IN_PROMPT", "CLI_WORKSPACE_MARK" in prompt)
-ok("CLI_SKILLS_PLUGIN", "--plugin-dir" in a)
+# Unmanaged: skills as a Claude plugin; managed: OpenClaw lists them in the prompt and Claude Code gets no native tools.
+managed = "--tools" in a and a[a.index("--tools") + 1] == ""
+print("CLI_TURN_MODE", "managed" if managed else "unmanaged")
+ok("CLI_SKILLS_PLUGIN", "--plugin-dir" in a if not managed else "<available_skills>" in prompt)
+if os.environ.get("UNMANAGED") == "1": ok("CLI_UNMANAGED_WITH_FORK", not managed and "--plugin-dir" in a)
 ok("CLI_GATEWAY_MCP", "--mcp-config" in a)
 PY
 [[ -s /tmp/cli-turn.json ]] && ! grep -q FAKE_CLAUDE_OK /tmp/cli-turn.json && head -c 1500 /tmp/cli-turn.json
