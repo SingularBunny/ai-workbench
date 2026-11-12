@@ -28,7 +28,11 @@ branch=$(git -C "$src" rev-parse --abbrev-ref HEAD)
 echo "Fork: $src ($branch, $rev) → $out; build: pnpm $build"
 # tar.umask=0022: by default git archive leaves files group-writable, and OpenClaw rejects
 # such package folders (browser extension install: "Refusing group/world-writable path").
-git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i \
+# A proxy from the environment (HTTPS_PROXY/HTTP_PROXY) reaches the build: the container then shares the host
+# network, so a proxy on the host's localhost works too.
+net=()
+[[ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]] && net=(--network host -e HTTPS_PROXY -e HTTP_PROXY -e NO_PROXY)
+git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i "${net[@]}" \
   -e BUILD="$build" -e GIT_COMMIT="$commit" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e HOME=/tmp/home -e OPENCLAW_CONTROL_UI_RELEASE_BUILD=1 -e CI=1 \
   -v aiwb-openclaw-pnpm:/pnpm-store -v "$out":/out "$image" bash -euo pipefail -c '
     mkdir -p /tmp/home /tmp/b /tmp/bin && tar -x -C /tmp/b && cd /tmp/b

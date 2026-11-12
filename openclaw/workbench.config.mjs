@@ -9,7 +9,7 @@
 // (OpenClaw reads it itself, docs/gateway/config-secrets-env.md). A config key not
 // found in the openclaw 5f68d354 docs does not go here.
 
-export const OPENCLAW_VERSION = "2026.10.10";
+export const OPENCLAW_VERSION = "2026.11.3";
 
 /** @param {{ home: string, sep: string, env: Record<string, string|undefined> }} ctx */
 export function settings(ctx) {
@@ -52,6 +52,10 @@ export function settings(ctx) {
   // Multi-model (aiwb-compare, docs/features/multi-model.md) calls the models chosen on its page by name: OpenClaw
   // lets a plugin pick the model only with this opt-in (docs plugins/sdk-runtime/models.md).
   out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);
+
+  // Claude CLI turns stay unmanaged (fork F62): since 2026.11 OpenClaw runs them without Claude Code's own tools,
+  // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them.
+  out.push(["plugins.entries.anthropic.config.managedTurns", false]);
 
   // Groups (aiwb-groups, docs/features/groups.md) takes each agent's reply from the agent_end hook, which OpenClaw
   // gives a non-bundled plugin only with this opt-in (docs plugins/sdk-runtime.md).
