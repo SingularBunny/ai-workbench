@@ -64,6 +64,8 @@ export function settings(ctx) {
   // Groups (aiwb-groups, docs/features/groups.md) takes each agent's reply from the agent_end hook, which OpenClaw
   // gives a non-bundled plugin only with this opt-in (docs plugins/sdk-runtime.md).
   out.push(["plugins.entries.aiwb-groups.hooks.allowConversationAccess", true]);
+  // Plan mode (aiwb-plan, docs/features/plan-mode.md) puts its note into the prompt of a planning chat.
+  out.push(["plugins.entries.aiwb-plan.hooks.allowConversationAccess", true]);
 
   // Semantic memory search with a local embeddings model (llama-cpp plugin, docs
   // plugins/llama-cpp.md): WORKBENCH_LOCAL_EMBEDDINGS=cpu|vulkan[:<GPU index>].
@@ -146,6 +148,8 @@ export const PLUGINS = {
     { id: "aiwb-compare", dir: "aiwb-plugins/compare", ui: "Multi-model" },
     // Several agents in one conversation; a manager picks who speaks next (docs/features/groups.md).
     { id: "aiwb-groups", dir: "aiwb-plugins/groups", ui: "Groups" },
+    // Plan mode for any model: /plan, then research and an approved plan before any change (docs/features/plan-mode.md).
+    { id: "aiwb-plan", dir: "aiwb-plugins/plan" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone

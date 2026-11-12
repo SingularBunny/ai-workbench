@@ -168,6 +168,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   bash /opt/ai-workbench/tools/container_check_claude_cli.sh
   bash /opt/ai-workbench/tools/container_check_projects.sh
   bash /opt/ai-workbench/tools/container_check_office.sh
+  bash /opt/ai-workbench/tools/container_check_plan.sh
   if [[ -n \"$PROFILE_DIR\" ]]; then
     echo ==== tasks; node=\$(find ~/.openclaw -maxdepth 5 -type f -path \"*/bin/node\" | head -1)
     \$node /home/tester/plugins/aiwb-plugins/mcp/scheduled-tasks/sync.mjs --profile $PROFILE_DIR; echo SYNC_EXIT=\$?
@@ -180,7 +181,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
 [[ "$REINSTALL" == 1 ]] && su - tester -c "bash /opt/ai-workbench/tools/container_check_migration.sh \"$INSTALL_ARGS\""
 '
 # Log lines the result is read from; shared by a single run and the summary.
-KEY='MIGRATION_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|KNOWLEDGE_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
+KEY='MIGRATION_[A-Z_]+=|PLAN_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|KNOWLEDGE_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
 
 run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<name><-clean>/
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
