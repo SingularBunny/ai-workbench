@@ -45,6 +45,7 @@ nav:
       - Groups: features/groups.md
       - Plan mode: features/plan-mode.md
       - GPU use: features/gpu.md
+      - Dictation: features/dictation.md
       - Chats: features/chats.md
       - Chat archive: features/chat-archive.md
       - Document preview: features/document-preview.md

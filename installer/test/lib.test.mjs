@@ -1075,3 +1075,17 @@ test("profile ENV: non-secret WORKBENCH_* values only; written into .env in plac
   assert.deepEqual(mergeProfile({ REPOS: [], PLUGINS: { own: [], marketplaces: {}, bases: [], runtime: [] }, MCP: [], settings: () => [] },
     { ENV: { WORKBENCH_FORK_PRESETS: "worker-limits" } }).ENV, { WORKBENCH_FORK_PRESETS: "worker-limits" });
 });
+
+test("dictation: Groq first, then OpenAI and OpenRouter; an explicit model or none; an authored setting is kept", async () => {
+  const { dictationSteps } = await import("../lib.mjs");
+  const model = (steps) => steps.length ? JSON.parse(steps[0].argv[3])[0] : null;
+  assert.deepEqual(model(dictationSteps({ GROQ_API_KEY: "k", OPENROUTER_API_KEY: "k" }, undefined)),
+    { provider: "groq", model: "whisper-large-v3-turbo", capabilities: ["audio"] });
+  assert.equal(model(dictationSteps({ OPENROUTER_API_KEY: "k" }, undefined)).provider, "openrouter");
+  assert.deepEqual(model(dictationSteps({ WORKBENCH_DICTATION_MODEL: "openai/gpt-4o-transcribe" }, undefined)),
+    { provider: "openai", model: "gpt-4o-transcribe", capabilities: ["audio"] });
+  assert.deepEqual(dictationSteps({ GROQ_API_KEY: "k", WORKBENCH_DICTATION_MODEL: "none" }, undefined), []);
+  assert.deepEqual(dictationSteps({ GROQ_API_KEY: "k" }, [{ provider: "deepgram", model: "nova-3" }]), []);
+  assert.deepEqual(dictationSteps({}, undefined), []);
+  assert.equal(dictationSteps({ GROQ_API_KEY: "k" }, undefined)[1].id, "tools.media.audio.enabled");
+});

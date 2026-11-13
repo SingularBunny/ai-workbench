@@ -98,6 +98,10 @@ Knowledge base folders for every agent, separated by ":" (an Obsidian vault is o
 
 ## Chat
 
+### `WORKBENCH_DICTATION_MODEL`
+
+Dictation (the chat microphone): speech-to-text model as provider/model, or none. Empty: the first provider with a key — Groq Whisper (free tier), OpenAI, OpenRouter's Whisper ([features/dictation.md](../features/dictation.md)). An existing tools.media.models setting is kept.
+
 ### `WORKBENCH_MCP_APPS`
 
 MCP Apps: interactive views from MCP servers in the chat (a sandbox on the Gateway port + 1, 18790 by default). 1 — enable, 0 — disable, empty — leave as is. Enable only for MCP servers you trust: the view HTML comes from the server. Restart the Gateway after the change.

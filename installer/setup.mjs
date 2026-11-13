@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -441,6 +441,8 @@ async function main() {
       ...pluginUiSteps(PLUGINS.own || []),
       // Providers with a free tier whose key is in .env: their models can answer in Multi-model.
       ...(PLUGINS.own || []).some((p) => p.id === "aiwb-compare") ? freeProviderSteps(env) : [],
+      // The composer microphone: a speech-to-text model for dictation, unless one is set already.
+      ...dictationSteps(env, configValue("tools.media.models")),
       // Network proxy (WORKBENCH_PROXY_URL / _HOSTS / _ROUTES): proxy.proxyUrl and, with the fork, per-host routes.
       ...proxySteps({ url: env.WORKBENCH_PROXY_URL, hosts: env.WORKBENCH_PROXY_HOSTS, routes: env.WORKBENCH_PROXY_ROUTES,
         fork: Boolean(env.WORKBENCH_OPENCLAW_PACKAGE) }),

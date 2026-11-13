@@ -9,6 +9,9 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Dictation in the chat: the installer sets a speech-to-text model for the composer microphone — Groq Whisper
+  (free tier) when `GROQ_API_KEY` is set, else OpenAI or OpenRouter's Whisper; `WORKBENCH_DICTATION_MODEL` picks one or
+  turns it off. Documentation: Dictation.
 - GPU use (`aiwb-gpu`): load and memory of NVIDIA GPUs in the chat header, and a GPU side panel with the models
   and processes that hold GPU memory (Ollama models, local embeddings, llama.cpp, LM Studio). Documentation: GPU use.
 - Install plan: the system programs missing for the features in use (Python, LibreOffice, poppler, OCRmyPDF and

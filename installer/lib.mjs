@@ -250,6 +250,38 @@ export function freeProviderSteps(env) {
 }
 
 /**
+ * Dictation in the chat (the composer microphone) needs a speech-to-text model: OpenClaw transcribes the recording
+ * through tools.media.models when capture ends. WORKBENCH_DICTATION_MODEL picks one (`provider/model`, or `none`);
+ * otherwise the first provider with a key: Groq Whisper (free tier), OpenAI, then OpenRouter's Whisper. An authored
+ * tools.media.models (current) is kept: it is the user's choice.
+ */
+export const DICTATION_MODELS = [
+  { keys: ["GROQ_API_KEY"], provider: "groq", model: "whisper-large-v3-turbo" },
+  { keys: ["OPENAI_API_KEY"], provider: "openai", model: "gpt-4o-mini-transcribe" },
+  { keys: ["OPENROUTER_API_KEY"], provider: "openrouter", model: "openai/whisper-large-v3-turbo" },
+];
+
+export function dictationSteps(env, current) {
+  if (current !== undefined && current !== null) return [];
+  const explicit = String(env.WORKBENCH_DICTATION_MODEL ?? "").trim();
+  if (explicit === "none") return [];
+  let pick = null;
+  if (explicit) {
+    const [provider, ...rest] = explicit.split("/");
+    if (provider && rest.length) pick = { provider, model: rest.join("/") };
+  } else {
+    pick = DICTATION_MODELS.find((m) => m.keys.some((k) => String(env[k] ?? "").trim())) ?? null;
+  }
+  if (!pick) return [];
+  const models = [{ provider: pick.provider, model: pick.model, capabilities: ["audio"] }];
+  return [
+    { kind: "config", id: "tools.media.models", note: `dictation: ${pick.provider}/${pick.model}`,
+      argv: ["config", "set", "tools.media.models", JSON.stringify(models), "--strict-json"] },
+    { kind: "config", id: "tools.media.audio.enabled", argv: ["config", "set", "tools.media.audio.enabled", "true", "--strict-json"] },
+  ];
+}
+
+/**
  * Own plugins OpenClaw already loads from the same folder are not linked again: `plugins install --link` of an
  * already linked plugin only repeats the record, and it fails outright for a plugin inside another plugin's folder
  * ("package owner … has conflicting child rows"). The step stays an own plugin (its skills still count) with
