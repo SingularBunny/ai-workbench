@@ -4,7 +4,7 @@
 Runs inside the container with the Gateway running and a real OPENROUTER_API_KEY. Each step is a chat turn sent
 through the Gateway (chat.send, the Control UI's own call) and read back from chat.history; it prints a marker
 LIVE_<STEP>=0 when the answer or its effect is there, 1 when not. Free models are slow and sometimes rate limited,
-so a turn waits up to TURN_TIMEOUT and a failed turn is tried once more before it counts.
+so a turn waits up to TURN_TIMEOUT, a failed step is tried three times a minute apart, and steps are spaced out.
 
   python3 live_model_check.py <judge model>
 """
@@ -36,8 +36,12 @@ def text_of(message):
     return " ".join(p.get("text", "") for p in content or [] if isinstance(p, dict) and p.get("type") == "text")
 
 
+LAST_TOOLS = []
+
+
 def turn(session, message, attachments=None):
-    """Send one message and wait for the run to finish; returns the last assistant text ('' if none)."""
+    """Send one message and wait for the run to finish; returns the last assistant text ('' if none). The turn's
+    tool results go to LAST_TOOLS, for the detail of a failed step."""
     before = len(gateway("chat.history", {"sessionKey": session, "limit": 200}).get("messages", []))
     params = {"sessionKey": session, "message": message, "idempotencyKey": str(uuid.uuid4())}
     if attachments:
@@ -55,21 +59,25 @@ def turn(session, message, attachments=None):
                 break
     messages = gateway("chat.history", {"sessionKey": session, "limit": 200}).get("messages", [])[before:]
     answers = [text_of(m) for m in messages if m.get("role") == "assistant" and text_of(m).strip()]
+    LAST_TOOLS[:] = [f"{m.get('toolName') or m.get('name') or 'tool'}: {text_of(m)[:200]}" for m in messages if m.get("role") in ("toolResult", "tool")]
     return answers[-1] if answers else ""
 
 
 def check(name, attempt):
-    """attempt() → (ok, detail); one retry, since a free model may be rate limited for a minute."""
+    """attempt() → (ok, detail); three tries a minute apart, since a free model may be rate limited for a minute."""
     ok, detail = False, ""
-    for n in range(2):
+    for n in range(3):
         try:
             ok, detail = attempt(n)
         except Exception as error:
             ok, detail = False, f"error: {error}"
         if ok:
             break
-        time.sleep(20)
+        time.sleep(60)
     print(f"LIVE_{name}={0 if ok else 1} ({str(detail).replace(chr(10), ' ')[:300]})", flush=True)
+    if not ok and LAST_TOOLS:
+        print(f"  tools of the last try: {' | '.join(LAST_TOOLS)[:800]}".replace(chr(10), " "), flush=True)
+    time.sleep(10)
     return ok
 
 
@@ -83,9 +91,13 @@ def chat(n):
 
 
 def knowledge(n):
-    answer = turn(session("knowledge", n), "Look it up in your knowledge base folders: when is the orchard quince pruned? "
-                  "Answer in one sentence.")
-    return "february" in answer.lower(), answer
+    # A fact no model can know: found only through the knowledge base (memory search over WORKBENCH_KNOWLEDGE).
+    os.makedirs(f"{HOME}/knowledge/greenhouse", exist_ok=True)
+    with open(f"{HOME}/knowledge/greenhouse/heater.md", "w") as f:
+        f.write("# Greenhouse heater\n\nThe greenhouse heater service code is HX-4471.\n")
+    answer = turn(session("knowledge", n), "Search your knowledge base (memory search) for the greenhouse heater service code "
+                  "and tell me the code.")
+    return "hx-4471" in answer.lower(), answer
 
 
 def memory_files():
@@ -163,7 +175,8 @@ def judge(judge_model):
         with open("/tmp/live-ex.json", "w") as f:
             json.dump({"question": "How many legs does a spider have?", "answer": "A spider has eight legs.",
                        "answer_model": os.environ.get("WORKBENCH_DEFAULT_MODEL", "")}, f)
-        env = {**os.environ, "WORKBENCH_JUDGE_MODEL": judge_model}
+        # The judge uses a proxy only when told (WORKBENCH_JUDGE_PROXY), not from HTTPS_PROXY.
+        env = {**os.environ, "WORKBENCH_JUDGE_MODEL": judge_model, "WORKBENCH_JUDGE_PROXY": os.environ.get("HTTPS_PROXY", "")}
         r = subprocess.run(["python3", f"{HOME}/plugins/aiwb-plugins/judge/skills/judge/scripts/judge.py", "--input",
                             "/tmp/live-ex.json"], capture_output=True, text=True, timeout=TURN_TIMEOUT, env=env)
         out = r.stdout + r.stderr

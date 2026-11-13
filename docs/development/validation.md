@@ -19,7 +19,10 @@ With a fork package — `--openclaw-package <.tgz>` ([OpenClaw from a fork](../o
 recalling it in another chat, a docx attachment, a scheduled task created by the agent and run once, a project agent,
 and the judge on a model of another family (`--live-judge`, `google/gemma-4-31b-it:free` by default). Markers
 `LIVE_*`. It takes `OPENROUTER_API_KEY` from the environment or `~/.openclaw/.env` and never prints it; free models
-cost nothing but use the key's daily request limit (about twenty turns per run).
+cost nothing but use the key's daily request limit: about twenty turns per run, and OpenRouter allows 50 free
+requests a day without credits. Where OpenRouter is reachable only through a proxy on the host's loopback, add
+`--live-proxy 127.0.0.1:<port>`: a relay (`tools/tcp_relay.py`) on the Docker bridge address makes it reachable
+from the container for the run's duration.
 
 ## Secret check before a commit
 
