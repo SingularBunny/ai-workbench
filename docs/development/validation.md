@@ -13,6 +13,14 @@ tools/validate_in_docker.sh --reinstall       # plus a rerun, uninstall, and ins
 
 With a fork package — `--openclaw-package <.tgz>` ([OpenClaw from a fork](../openclaw-fork.md)).
 
+**Without Claude, on a real model:** `--live-model <OpenRouter id>` (for example
+`nvidia/nemotron-3-ultra-550b-a55b:free`) makes the model the default and, after the usual checks, runs
+`tools/live_model_check.py`: real chat turns through the Gateway — a reply, the knowledge base, saving to memory and
+recalling it in another chat, a docx attachment, a scheduled task created by the agent and run once, a project agent,
+and the judge on a model of another family (`--live-judge`, `google/gemma-4-31b-it:free` by default). Markers
+`LIVE_*`. It takes `OPENROUTER_API_KEY` from the environment or `~/.openclaw/.env` and never prints it; free models
+cost nothing but use the key's daily request limit (about twenty turns per run).
+
 ## Secret check before a commit
 
 `tools/check-secrets.sh` runs [gitleaks](https://github.com/gitleaks/gitleaks) over the staged changes and
