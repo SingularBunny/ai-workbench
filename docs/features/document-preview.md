@@ -7,7 +7,7 @@ sends the document for conversion, and LibreOffice on the Gateway machine: the `
 the document into a PDF locally (`soffice --headless`), so the file never leaves the machine. LibreOffice is looked up in `PATH`
 and the usual install locations; a different path goes in `plugins.entries.aiwb-office.config.soffice`. Finished PDFs
 are cached by content in `~/.openclaw/workbench/office-preview/` (limit `cacheMb`, 512 MB by
-default), so reopening is instant. Without LibreOffice or without the fork the document is offered for
+default), so reopening is instant. LibreOffice: [System programs](../install/system-programs.md). Without LibreOffice or without the fork the document is offered for
 download, as before. The limit is 16 MB per PDF (what the Control UI viewer can open). A long spreadsheet prints to
 hundreds of pages; when its PDF is over the limit, the preview shows the first 1000 rows of each sheet as a plain table,
 with a note saying how many rows there are (open the file itself for all of them).

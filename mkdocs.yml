@@ -25,6 +25,7 @@ nav:
   - Installation:
       - install/index.md
       - First run: install/first-run.md
+      - System programs: install/system-programs.md
       - Keys: install/keys.md
       - Running: install/run.md
       - Network and proxy: install/network.md

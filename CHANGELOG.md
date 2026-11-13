@@ -9,6 +9,11 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Install plan: the system programs missing for the features in use (Python, LibreOffice, poppler, OCRmyPDF and
+  Tesseract with the locale's language, Vulkan tools), with one install command for apt, dnf, pacman (AUR for
+  ocrmypdf) or brew; an interactive install offers to run it. Documentation: System programs.
+- Knowledge base scans: PDF pages without a text layer and images are recognized with OCRmyPDF and Tesseract
+  (needs `aiwb-office` 0.3.0).
 - Fork packages from the OpenClaw fork's releases page, built on GitHub-hosted runners with signed build
   provenance (`gh attestation verify`).
 - Documentation: a first-run page (from a clean machine to the first chat) and a settings reference of every

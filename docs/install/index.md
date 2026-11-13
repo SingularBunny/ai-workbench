@@ -22,7 +22,8 @@ What happens:
    skipped. To use **OpenClaw from a fork** instead of the pinned version, see
    [OpenClaw from a fork](../openclaw-fork.md).
 2. **Install plan** (`installer/setup.mjs`): marketplace, base plugins, your own plugins with a
-   dependency check, settings. Nothing is done until you answer `y`.
+   dependency check, settings, and the [system programs](system-programs.md) missing for the features you use
+   (offered at the end of an interactive install). Nothing is done until you answer `y`.
 3. **Anthropic marketplace** — a dedicated shallow clone of the repository in
    `~/.openclaw/workbench/marketplaces/` at the commit pinned in
    `openclaw/workbench.config.mjs` (`commit`, full sha): fetch by sha, checkout, then `HEAD` is

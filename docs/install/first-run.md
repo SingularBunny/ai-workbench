@@ -1,7 +1,8 @@
 # First run
 
 From a clean machine to the first answer in the chat. Linux, macOS or WSL; you
-need `git` and `curl`, but neither Node nor root. Windows: the same steps with `installer\install.ps1`
+need `git` and `curl`, but neither Node nor root. Some features use programs from your package manager
+(LibreOffice, poppler, OCR); the plan lists the missing ones, see [System programs](system-programs.md). Windows: the same steps with `installer\install.ps1`
 ([Installation](index.md)).
 
 1. **Get ai-workbench.**

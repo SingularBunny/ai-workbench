@@ -59,7 +59,8 @@ and never to edit the copies. The copies are made outside the knowledge folders,
   Tesseract. Install both (Debian/Ubuntu: `apt install ocrmypdf`; Arch: `ocrmypdf` from the AUR, e.g. `yay -S ocrmypdf`, plus `pacman -S tesseract`) and the Tesseract
   language packs for your documents (`tesseract-ocr-rus`, `tesseract-data-rus`, …); every installed language is used,
   except `osd` and `equ`. Without OCR a PDF copy keeps the text pages and is redone once OCR is installed; images get
-  no copy. A file is recognized at most 10 minutes.
+  no copy. A file is recognized at most 10 minutes. The install plan lists what is missing:
+  [System programs](../install/system-programs.md).
 - Files over 64 MB are skipped; a copy keeps at most 2 million characters.
 - Hidden folders (`.obsidian`, `.trash`, `.git`), Office lock files (`~$…`) and symbolic links are skipped.
 

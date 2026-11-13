@@ -18,8 +18,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
 import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
-import { knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
+import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
+import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
 import * as PUBLIC from "../openclaw/workbench.config.mjs";
 const { OPENCLAW_VERSION, PLUGIN_RENAMES } = PUBLIC;
 
@@ -525,6 +526,12 @@ async function main() {
   console.log("Plan:\n" + formatPlan(plan));
   if (added) console.log(`\n  Gateway token           will be created in ${envFile}`);
   console.log(`  uninstall manifest      ${existsSync(manifestFile) ? "exists — only new keys and plugins will be added" : "will be written"}: ${manifestFile}`);
+  // System programs of the features in use (LibreOffice, poppler, OCR, Vulkan tools): listed, installed only on request.
+  const systemTools = systemToolsPlan({ which, env: process.env,
+    ctx: { office: Boolean(officeDir), knowledge: hasKnowledge(knowledge),
+      vulkanEmbeddings: /^vulkan/.test(env.WORKBENCH_LOCAL_EMBEDDINGS || "") },
+    ocrLanguages: which("tesseract") ? run("tesseract", ["--list-langs"], { capture: true }).out.split("\n").slice(1).map((l) => l.trim()).filter(Boolean) : null });
+  if (systemTools.missing.length) console.log(`\n${formatSystemTools(systemTools)}`);
   if (flag("--dry-run")) { if (profileTemp) rmSync(profileTemp, { recursive: true, force: true }); return 0; }
 
   if (!flag("--yes")) {
@@ -678,6 +685,14 @@ async function main() {
       if (r.code !== 0) { failed++; console.error("✗ scheduled tasks — see above"); }
     } else console.log(`  Gateway is not running — after \`openclaw gateway run\`, create the tasks with:\n  ${syncCmd}`);
   }
+  if (systemTools.commands.length && !flag("--yes") && process.stdin.isTTY && !isWin) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = (await rl.question(`\nInstall the missing system programs now?\n${systemTools.commands.map((c) => `  ${c}`).join("\n")}\n[y/N] `)).trim().toLowerCase();
+    rl.close();
+    if (["y", "yes", "д", "да"].includes(answer)) {
+      for (const c of systemTools.commands) if (run("sh", ["-c", c]).code !== 0) { failed++; console.error(`✗ ${c}`); }
+    }
+  } else if (systemTools.commands.length) console.log(`\nSystem programs not installed; to add them:\n${systemTools.commands.map((c) => `  ${c}`).join("\n")}`);
   const skipped = plan.filter((s) => s.kind === "skip");
   console.log(`\nDone: errors ${failed}, skipped ${skipped.length}.`);
   console.log("Next: add your keys to " + envFile + " (OPENROUTER_API_KEY / ANTHROPIC_API_KEY),\n" +
