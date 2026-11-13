@@ -94,7 +94,7 @@ Grafana MCP (if the profile defines it): installed only when the URL is set. A t
 
 ### `WORKBENCH_KNOWLEDGE`
 
-Knowledge base folders for every agent, separated by ":" (an Obsidian vault is one; [features/knowledge.md](../features/knowledge.md)): agents search the Markdown notes there with memory search and may save notes there; PDF and Office files are searched through text copies kept by a timer (needs pdftotext and LibreOffice). Per project: "knowledge" in project.json. Not / or the home folder itself.
+Knowledge base folders for every agent, separated by ":" (an Obsidian vault is one; [features/knowledge.md](../features/knowledge.md)): agents search the Markdown notes there with memory search and may save notes there; PDF and Office files are searched through text copies kept by a timer (needs pdftotext and LibreOffice; scans and images need OCRmyPDF and Tesseract). Per project: "knowledge" in project.json. Not / or the home folder itself.
 
 ## Chat
 

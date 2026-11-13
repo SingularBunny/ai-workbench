@@ -53,11 +53,15 @@ and never to edit the copies. The copies are made outside the knowledge folders,
   size or date changed; copies of deleted files are removed. Run it now with
   `systemctl --user start aiwb-knowledge-text`; its log: `journalctl --user -u aiwb-knowledge-text`.
 - PDF text comes from `pdftotext` (poppler), Office text from local LibreOffice, as for Office attachments in chat
-  (the `aiwb-office` plugin). Without one of them its files get no copy and the run says so. Scanned PDFs without a
-  text layer give an empty copy: there is no OCR.
+  (the `aiwb-office` plugin). Without one of them its files get no copy and the run says so.
+- Scans: PDF pages without a text layer are recognized with [OCRmyPDF](https://ocrmypdf.readthedocs.io/) (pages that
+  have any text are left as they are, its `--skip-text` rule), images (`.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`) with
+  Tesseract. Install both (Debian/Ubuntu: `apt install ocrmypdf`, Arch: `pacman -S ocrmypdf`) and the Tesseract
+  language packs for your documents (`tesseract-ocr-rus`, `tesseract-data-rus`, …); every installed language is used,
+  except `osd` and `equ`. Without OCR a PDF copy keeps the text pages and is redone once OCR is installed; images get
+  no copy. A file is recognized at most 10 minutes.
 - Files over 64 MB are skipped; a copy keeps at most 2 million characters.
-- Hidden folders (`.obsidian`, `.trash`, `.git`), Office lock files (`~$…`) and symbolic links are skipped. Images are
-  not copied.
+- Hidden folders (`.obsidian`, `.trash`, `.git`), Office lock files (`~$…`) and symbolic links are skipped.
 
 Symbolic links inside a knowledge folder are skipped by memory search too: list the real folder instead. To search with a local model instead of a cloud embedding service, see
 `WORKBENCH_LOCAL_EMBEDDINGS` in the [settings reference](../reference/env.md).
