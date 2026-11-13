@@ -56,7 +56,7 @@ and never to edit the copies. The copies are made outside the knowledge folders,
   (the `aiwb-office` plugin). Without one of them its files get no copy and the run says so.
 - Scans: PDF pages without a text layer are recognized with [OCRmyPDF](https://ocrmypdf.readthedocs.io/) (pages that
   have any text are left as they are, its `--skip-text` rule), images (`.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`) with
-  Tesseract. Install both (Debian/Ubuntu: `apt install ocrmypdf`, Arch: `pacman -S ocrmypdf`) and the Tesseract
+  Tesseract. Install both (Debian/Ubuntu: `apt install ocrmypdf`; Arch: `ocrmypdf` from the AUR, e.g. `yay -S ocrmypdf`, plus `pacman -S tesseract`) and the Tesseract
   language packs for your documents (`tesseract-ocr-rus`, `tesseract-data-rus`, …); every installed language is used,
   except `osd` and `equ`. Without OCR a PDF copy keeps the text pages and is redone once OCR is installed; images get
   no copy. A file is recognized at most 10 minutes.
