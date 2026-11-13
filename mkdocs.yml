@@ -44,6 +44,7 @@ nav:
       - Multi-model: features/multi-model.md
       - Groups: features/groups.md
       - Plan mode: features/plan-mode.md
+      - GPU use: features/gpu.md
       - Chats: features/chats.md
       - Chat archive: features/chat-archive.md
       - Document preview: features/document-preview.md

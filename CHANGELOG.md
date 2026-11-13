@@ -9,6 +9,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- GPU use (`aiwb-gpu`): load and memory of NVIDIA GPUs in the chat header, and a GPU side panel with the models
+  and processes that hold GPU memory (Ollama models, local embeddings, llama.cpp, LM Studio). Documentation: GPU use.
 - Install plan: the system programs missing for the features in use (Python, LibreOffice, poppler, OCRmyPDF and
   Tesseract with the locale's language, Vulkan tools), with one install command for apt, dnf, pacman (AUR for
   ocrmypdf) or brew; an interactive install offers to run it. Documentation: System programs.

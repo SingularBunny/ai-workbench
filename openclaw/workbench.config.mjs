@@ -150,6 +150,9 @@ export const PLUGINS = {
     { id: "aiwb-groups", dir: "aiwb-plugins/groups", ui: "Groups" },
     // Plan mode for any model: /plan, then research and an approved plan before any change (docs/features/plan-mode.md).
     { id: "aiwb-plan", dir: "aiwb-plugins/plan" },
+    // GPU load and memory, and which models and processes hold it: a line in the chat header, a side panel
+    // (docs/features/gpu.md).
+    { id: "aiwb-gpu", dir: "aiwb-plugins/gpu", ui: "GPU" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone
