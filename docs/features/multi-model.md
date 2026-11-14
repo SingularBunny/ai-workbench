@@ -48,7 +48,16 @@ al., 2023). A judge tends to prefer an answer by its position, by its length and
   marked **most consistent**. Two different answers: **no clear agreement**, and the judge's notes say why.
 
 **Merge** writes a new answer from all of them. It can lose an answer that was right where the others were wrong,
-so it is a separate button and marked a synthesis.
+so it is a separate button and marked a synthesis. The merge ends with two short sections, headed in the language of
+the question:
+
+- what stays unresolved: the points the answers disagree on or leave open, and the assumptions the merged answer
+  depends on;
+- what would settle it: the facts, data or checks that would tell the views apart. This is evidence that fits one
+  view and not the other; evidence that fits every view settles nothing.
+
+When the answers agree, the merge has no such sections. The two sections follow Analysis of Competing Hypotheses
+([Heuer, *Psychology of Intelligence Analysis*, ch. 8](https://www.cia.gov/resources/csi/static/Pyschology-of-Intelligence-Analysis.pdf)).
 
 ## Agreement matrix
 
