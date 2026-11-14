@@ -174,7 +174,10 @@ export const PLUGINS = {
     // (docs/install/free-providers.md); Google, NVIDIA and Hugging Face are built into OpenClaw.
     { id: "@openclaw/groq-provider", when: "GROQ_API_KEY" },
     { id: "@openclaw/cerebras-provider", when: "CEREBRAS_API_KEY" },
-    { id: "@openclaw/mistral-provider", when: "MISTRAL_API_KEY" }],
+    { id: "@openclaw/mistral-provider", when: "MISTRAL_API_KEY" },
+    // Scheduled tasks that wake the model only when a check script finds work, or run a script without the model
+    // (ClawHub, MIT; inert until rules are configured — docs/features/scheduled-tasks.md).
+    { id: "cronhook", spec: "clawhub:cronhook" }],
 };
 
 // Own plugins renamed in November 2026 (folder and id). An existing install still has the old ids in
