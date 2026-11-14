@@ -35,6 +35,13 @@ agent entirely, use the agent's skill list (`agents.entries.<id>.skills`, OpenCl
 `{id, name, question}` with the same ids: `answers`, `format`, `security`, `tone`), for example rules that fit
 how you work: links in reports, what counts as unsafe in your own questions, which friendly phrases are fine.
 
+**A panel of judges.** `WORKBENCH_JUDGE_PANEL=<model>,<model>` adds up to two more judges (same base URL and key),
+best from families other than the first judge and the answering model. Each criterion gets the verdict of the
+majority — the panel of diverse models (PoLL) from [Verga et al., 2024](https://arxiv.org/abs/2404.18796), which
+agreed with human labels better than a single large judge and favoured its own family less. The third judge is
+asked only when the first two disagree or one of them fails: it cannot change a majority the first two already make.
+A tie leaves the criterion not evaluated. A panel costs two or three judge calls per answer.
+
 **How far to trust it.** The judge was checked against a person's own verdicts on 39 real answers. With
 criteria tuned to that person it rarely raises false alarms on safety and tone, but it misses most
 substance problems: those usually show only in the user's next message ("you misunderstood", "that did

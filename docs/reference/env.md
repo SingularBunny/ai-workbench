@@ -176,6 +176,10 @@ Judge (judge skill of the ai-workbench plugin). Use a model from a DIFFERENT fam
 
 Defaults to OpenRouter and `OPENROUTER_API_KEY`; for Ollama — http://127.0.0.1:11434/v1.
 
+### `WORKBENCH_JUDGE_PANEL`
+
+Panel of judges: up to two more judge models, comma-separated, from other families; majority per criterion, the third asked only when the first two disagree ([features/judge.md](../features/judge.md)).
+
 ### `WORKBENCH_JUDGE_CRITERIA`
 
 Custom criteria: path to a JSON list of {"id","name","question"}.
