@@ -156,6 +156,24 @@ records and 64 MiB; from a longer chat OpenClaw takes the last part; the full hi
 the last 200 records and no more than 512 KiB, but Claude CLI continues it with full
 context. Imported sessions go to "Other", not by project.
 
+## Continue in a terminal, and back
+
+A chat that runs on Claude CLI is an ordinary Claude Code conversation: `~/.claude/projects/<folder>/<id>.jsonl`
+holds every turn, the ones made in OpenClaw included. So Claude Code in a terminal can take it over at any moment
+and continue where OpenClaw stopped — also when OpenClaw is not running at all:
+
+- **Continue in terminal** in the chat's menu (sidebar row, chat header) copies the command,
+  `cd <project folder> && claude --resume <id>`.
+- `~/.openclaw/workbench/claude-chats.md` lists every such chat by project folder, newest first, with its command.
+  The bridge rewrites it after each turn and every 10 minutes; it is a plain file, readable without OpenClaw.
+- Claude Code's own `/resume` list does not show these conversations (OpenClaw starts them as `sdk-cli`), and it
+  shows the chat they were imported from under the same title — that one stops at the import. Use the command.
+- While Claude Code has the chat open in a terminal, OpenClaw does not run its turns and says so in the chat: both
+  would write to the same conversation. Leave Claude Code, then send again.
+- Back in OpenClaw, the turns made in the terminal show in the chat (OpenClaw reads the same conversation file when
+  it loads the chat's history; reopen the chat if it was open the whole time), and the model sees them: with the
+  OpenClaw fork, a Claude process kept from before is restarted when the conversation changed outside it.
+
 ## claude.ai cloud chats
 
 Chats in Claude Desktop's regular **Chat** mode live on claude.ai servers, not on disk, so the
