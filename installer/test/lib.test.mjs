@@ -122,6 +122,15 @@ test("plan: base plugins before own plugins, settings after plugins, check last"
   assert.equal(plan.find((s) => s.id === "aw").dir, path.join("/repo", "plugins", "aw"));
 });
 
+test("runtime plugins: a ClawHub spec is installed under its plugin id; an optional one carries its hint", () => {
+  const plugins = { ...PLUGINS, runtime: [{ id: "cronhook", spec: "clawhub:cronhook", optional: "check the proxy" }] };
+  const step = buildPlan({ settings: [], plugins, pluginsRoot: root, projectRoot: "/repo", env: {}, ownState, marketplaceDir: local })
+    .find((s) => s.kind === "runtime");
+  assert.equal(step.id, "cronhook");
+  assert.deepEqual(step.argv, ["plugins", "install", "clawhub:cronhook", "--force"]);
+  assert.equal(step.optional, "check the proxy");
+});
+
 test("acpx is installed only when a VM is configured", () => {
   const without = buildPlan({ settings: [], plugins: PLUGINS, pluginsRoot: root, projectRoot: "/repo", env: {}, ownState, marketplaceDir: local });
   const withVm = buildPlan({ settings: [], plugins: PLUGINS, pluginsRoot: root, projectRoot: "/repo", env: { WORKBENCH_VM_SSH: "u@vm" }, ownState, marketplaceDir: local });

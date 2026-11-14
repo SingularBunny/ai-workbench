@@ -177,7 +177,8 @@ export const PLUGINS = {
     { id: "@openclaw/mistral-provider", when: "MISTRAL_API_KEY" },
     // Scheduled tasks that wake the model only when a check script finds work, or run a script without the model
     // (ClawHub, MIT; inert until rules are configured — docs/features/scheduled-tasks.md).
-    { id: "cronhook", spec: "clawhub:cronhook" }],
+    { id: "cronhook", spec: "clawhub:cronhook",
+      optional: "add clawhub.ai to WORKBENCH_PROXY_HOSTS if ClawHub is not reachable directly, then re-run the installer" }],
 };
 
 // Own plugins renamed in November 2026 (folder and id). An existing install still has the old ids in
