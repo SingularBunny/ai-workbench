@@ -50,9 +50,28 @@ al., 2023). A judge tends to prefer an answer by its position, by its length and
 **Merge** writes a new answer from all of them. It can lose an answer that was right where the others were wrong,
 so it is a separate button and marked a synthesis.
 
+## Agreement matrix
+
+**Agreement matrix** shows how the answers relate pair by pair. The judge checks every pair both ways: does answer
+A entail answer B, and B entail A? This is the check semantic entropy uses to find answers that mean the same
+(Kuhn et al., 2023, [arXiv 2302.09664](https://arxiv.org/abs/2302.09664); Farquhar et al., Nature 2024,
+[doi 10.1038/s41586-024-07421-0](https://doi.org/10.1038/s41586-024-07421-0)), with the authors' prompt and
+their reading of the reply. Each pair is one of:
+
+| Mark | Meaning |
+|---|---|
+| same | each answer entails the other |
+| compatible | one entails the other, no contradiction |
+| different | neither entails the other |
+| contradict | the judge found a contradiction |
+
+Below the table, the answers that say the same thing are grouped. The check was made for short answers; long ones
+are compared as a whole, so read the matrix as a coarse signal next to the judge's pick, not as a verdict.
+
 ## Cost
 
-A question costs one call per answering model; picking adds two judge calls, merging one call. Free models cost
+A question costs one call per answering model; picking adds two judge calls, merging one call, the agreement
+matrix N·(N−1) judge calls for N answers (6 for three). Free models cost
 nothing but have rate limits; a judge on a Claude subscription counts against its limits. The page shows the
 count before you ask.
 
