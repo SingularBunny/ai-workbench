@@ -159,7 +159,7 @@ su - tester -c "mkdir -p -m 700 ~/.openclaw && chmod 700 ~/.openclaw && echo GRA
 # the tasks themselves do not run here and the model is never called.
 su - tester -c "echo OPENROUTER_API_KEY=dummy-validate-only >> ~/.openclaw/.env"
 # --live-model: the real key and the model instead (the key comes in the container environment, never in the log).
-# --live-proxy: the Gateway and the judge reach OpenRouter through the proxy of the host (set after the install, which goes direct).
+# --live-proxy: the install, the Gateway and the judge reach the model provider through the proxy of the host.
 [[ -n "$LIVE_PROXY" ]] && echo "export HTTPS_PROXY=$LIVE_PROXY HTTP_PROXY=$LIVE_PROXY NO_PROXY=localhost,127.0.0.1,::1" > /home/tester/.live-proxy
 # A Groq run keeps the dummy OpenRouter key: with a real one a failed default model would fall back to paid openrouter/auto.
 [[ -n "$LIVE_MODEL" && "$LIVE_MODEL" != groq/* ]] && su - tester -c "sed -i /^OPENROUTER_API_KEY=/d ~/.openclaw/.env" && printf "OPENROUTER_API_KEY=%s\n" "$OPENROUTER_API_KEY" >> /home/tester/.openclaw/.env
@@ -181,7 +181,8 @@ su - tester -c "echo WORKBENCH_FORK_PRESETS=worker-limits,catalog-owner >> ~/.op
 su - tester -c "mkdir -p ~/.config/chromium/Default && chmod go-w ~/.config && chmod 700 ~/.config/chromium && echo {} > ~/.config/chromium/Default/Preferences"
 # As after running JetBrains AI Assistant: the folder and acp.json with a foreign entry, which must survive.
 su - tester -c "mkdir -p ~/.jetbrains && echo {\\\"agent_servers\\\":{\\\"Other\\\":{\\\"command\\\":\\\"/x\\\"}}} > ~/.jetbrains/acp.json && cp ~/.jetbrains/acp.json /out/acp-before.json"
-su - tester -c "export PATH=/home/tester/bin:\$PATH; cd /opt/ai-workbench && installer/install.sh $INSTALL_ARGS" ; echo "INSTALL_EXIT=$?"
+# --live-proxy: the install too, since it fetches the catalog of the default model provider (Groq refuses direct requests here).
+su - tester -c "export PATH=/home/tester/bin:\$PATH; [[ -f ~/.live-proxy ]] && . ~/.live-proxy; cd /opt/ai-workbench && installer/install.sh $INSTALL_ARGS" ; echo "INSTALL_EXIT=$?"
 su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   test -f ~/.config/chromium/NativeMessagingHosts/ai.openclaw.browser_bootstrap.json; echo CHROME_HOST_REGISTERED=\$?
   [[ -n \"$OC_SHA\" ]] && OC_SHA=$OC_SHA bash /opt/ai-workbench/tools/container_check_fork.sh

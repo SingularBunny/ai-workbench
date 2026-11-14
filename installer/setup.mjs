@@ -663,8 +663,22 @@ async function main() {
     if (step.exec === "git" && step.argv[0] === "clone") mkdirSync(path.dirname(step.argv.at(-1)), { recursive: true });
     // OpenClaw checks a model reference against its model catalog on write; a provider discovered at run time (Groq,
     // say) is not in it on a fresh install, so its catalog is refreshed first ("Unknown model: groq/…" otherwise).
-    for (const provider of modelProvidersToRefresh(step)) openclaw(["models", "list", "--refresh", "--provider", provider], { capture: true });
-    const r = step.exec ? run(step.exec, step.argv, { capture: !!step.expect }) : openclaw(step.argv, { capture: step.kind === "config" || step.kind === "config-batch" || !!step.tolerant });
+    for (const provider of modelProvidersToRefresh(step)) {
+      const refreshed = openclaw(["models", "list", "--refresh", "--provider", provider], { capture: true });
+      if (refreshed.code !== 0) console.log(`  model catalog of ${provider} not refreshed: ${refreshed.out.trim().split("\n").slice(-1)[0] || `exit code ${refreshed.code}`}`);
+    }
+    let r = step.exec ? run(step.exec, step.argv, { capture: !!step.expect }) : openclaw(step.argv, { capture: step.kind === "config" || step.kind === "config-batch" || !!step.tolerant });
+    // `config set` rejects a model its offline check cannot find; models of npm-installed providers (Groq) fail it even
+    // after a catalog refresh, while `models set` saves them with a warning. So such a default model goes through it.
+    if (r.code !== 0 && modelProvidersToRefresh(step).length && /Unknown model/.test(r.out)) {
+      const value = JSON.parse(step.argv[3]);
+      r = openclaw(["models", "set", value.primary], { capture: true });
+      if (r.code === 0 && value.fallbacks?.length) {
+        openclaw(["models", "fallbacks", "clear"], { capture: true });
+        for (const fallback of value.fallbacks) if (r.code === 0) r = openclaw(["models", "fallbacks", "add", fallback], { capture: true });
+      }
+      if (r.code === 0) console.log(`  saved with \`openclaw models set\`: ${value.primary} is not in the offline model catalog`);
+    }
     const mismatch = step.expect && r.code === 0 && r.out.trim() !== step.expect;
     // A tolerant step may find nothing to do (an old plugin id already gone).
     if (step.tolerant && r.code !== 0) { console.log(`  nothing to remove: ${r.out.trim().split("\n").slice(-1)[0] || `exit code ${r.code}`}`); continue; }

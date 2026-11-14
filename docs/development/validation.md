@@ -23,8 +23,11 @@ cost nothing but use the key's daily request limit: about twenty turns per run, 
 requests a day without credits. Where OpenRouter is reachable only through a proxy on the host's loopback, add
 `--live-proxy 127.0.0.1:<port>`: a relay (`tools/tcp_relay.py`) on the Docker bridge address makes it reachable
 from the container for the run's duration.
-`--live-model groq/<id>` runs the same on Groq (`GROQ_API_KEY`), whose free tier allows far more requests a day;
-for example `--live-model groq/openai/gpt-oss-120b --live-judge groq/qwen/qwen3.8-27b`.
+A Groq model works as the judge (`--live-judge groq/qwen/qwen3.8-27b`, `GROQ_API_KEY`): its free tier allows
+many requests a day, and judge requests are small. Not as the agent model: the free tier caps a request at about
+8,000 tokens a minute, less than an OpenClaw agent prompt with its tools, so every turn fails with "Request too large".
+The first step checks which model a turn really ran on and stops the run when it is another one; with a Groq agent
+model the OpenRouter key in the container stays a dummy, so nothing can fall back to a paid model.
 
 ## Secret check before a commit
 
