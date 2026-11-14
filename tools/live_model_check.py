@@ -85,9 +85,22 @@ def session(name, n, agent="main"):
     return f"agent:{agent}:live-{name}-{n}"
 
 
+def session_model(key):
+    for row in gateway("sessions.list", {}).get("sessions", []):
+        if row.get("key") == key:
+            provider, model = row.get("modelProvider") or "", row.get("model") or ""
+            return f"{provider}/{model}" if provider and not model.startswith(provider + "/") else model
+    return ""
+
+
 def chat(n):
-    answer = turn(session("chat", n), "Reply with exactly the word: pong")
-    return "pong" in answer.lower(), answer
+    # The turn must run on the model under test: a default that failed to apply falls back to another one silently.
+    key = session("chat", n)
+    answer = turn(key, "Reply with exactly the word: pong")
+    used, want = session_model(key), os.environ.get("WORKBENCH_DEFAULT_MODEL", "")
+    if want and used != want:
+        return False, f"the turn ran on {used or 'an unknown model'}, not {want}"
+    return "pong" in answer.lower(), f"{answer} ({used})"
 
 
 def knowledge(n):
@@ -206,7 +219,9 @@ def judge(judge_model):
 def main():
     judge_model = sys.argv[1]
     print(f"==== live model {os.environ.get('WORKBENCH_DEFAULT_MODEL')}, judge {judge_model}", flush=True)
-    check("CHAT", chat)
+    if not check("CHAT", chat):
+        print("LIVE_STOPPED=1 (the chat turn did not run on the model under test; the other steps would test another model)")
+        return
     check("KNOWLEDGE", knowledge)
     check("MEMORY_SAVED", memory_save)
     check("MEMORY_RECALL", memory_recall)

@@ -1089,3 +1089,11 @@ test("dictation: Groq first, then OpenAI and OpenRouter; an explicit model or no
   assert.deepEqual(dictationSteps({}, undefined), []);
   assert.equal(dictationSteps({ GROQ_API_KEY: "k" }, undefined)[1].id, "tools.media.audio.enabled");
 });
+
+test("default model: providers outside the built-in catalog are refreshed before the model is written", async () => {
+  const { modelProvidersToRefresh } = await import("../lib.mjs");
+  const step = (value) => ({ kind: "config", id: "agents.defaults.model", argv: ["config", "set", "agents.defaults.model", JSON.stringify(value), "--strict-json"] });
+  assert.deepEqual(modelProvidersToRefresh(step({ primary: "groq/openai/gpt-oss-120b", fallbacks: ["openrouter/auto", "google/gemini-x"] })), ["groq", "google"]);
+  assert.deepEqual(modelProvidersToRefresh(step({ primary: "anthropic/claude-opus-5-5" })), []);
+  assert.deepEqual(modelProvidersToRefresh({ kind: "config", id: "gateway.port", argv: [] }), []);
+});

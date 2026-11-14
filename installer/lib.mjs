@@ -249,6 +249,16 @@ export function freeProviderSteps(env) {
     argv: ["config", "set", "plugins.entries.aiwb-compare.config.freeProviders", JSON.stringify(ids), "--strict-json"] }];
 }
 
+/** Providers whose catalog must be refreshed before a step that writes model references (agents.defaults.model):
+ *  all but the built-in OpenRouter and Anthropic and the Claude CLI runtime. */
+export function modelProvidersToRefresh(step) {
+  if (step.kind !== "config" || step.id !== "agents.defaults.model") return [];
+  let value;
+  try { value = JSON.parse(step.argv[3]); } catch { return []; }
+  const refs = [value?.primary, ...(value?.fallbacks ?? [])].filter((r) => typeof r === "string" && r.includes("/"));
+  return [...new Set(refs.map((r) => r.split("/")[0]))].filter((p) => !["openrouter", "anthropic", "claude-cli"].includes(p));
+}
+
 /**
  * Dictation in the chat (the composer microphone) needs a speech-to-text model: OpenClaw transcribes the recording
  * through tools.media.models when capture ends. WORKBENCH_DICTATION_MODEL picks one (`provider/model`, or `none`);

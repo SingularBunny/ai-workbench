@@ -161,7 +161,8 @@ su - tester -c "echo OPENROUTER_API_KEY=dummy-validate-only >> ~/.openclaw/.env"
 # --live-model: the real key and the model instead (the key comes in the container environment, never in the log).
 # --live-proxy: the Gateway and the judge reach OpenRouter through the proxy of the host (set after the install, which goes direct).
 [[ -n "$LIVE_PROXY" ]] && echo "export HTTPS_PROXY=$LIVE_PROXY HTTP_PROXY=$LIVE_PROXY NO_PROXY=localhost,127.0.0.1,::1" > /home/tester/.live-proxy
-[[ -n "$LIVE_MODEL" ]] && su - tester -c "sed -i /^OPENROUTER_API_KEY=/d ~/.openclaw/.env" && printf "OPENROUTER_API_KEY=%s\n" "${OPENROUTER_API_KEY:-dummy-validate-only}" >> /home/tester/.openclaw/.env
+# A Groq run keeps the dummy OpenRouter key: with a real one a failed default model would fall back to paid openrouter/auto.
+[[ -n "$LIVE_MODEL" && "$LIVE_MODEL" != groq/* ]] && su - tester -c "sed -i /^OPENROUTER_API_KEY=/d ~/.openclaw/.env" && printf "OPENROUTER_API_KEY=%s\n" "$OPENROUTER_API_KEY" >> /home/tester/.openclaw/.env
 [[ -n "$LIVE_MODEL" && -n "$GROQ_API_KEY" ]] && printf "GROQ_API_KEY=%s\n" "$GROQ_API_KEY" >> /home/tester/.openclaw/.env
 # A profile names its own models (ENV); the container has no account for them, so these keep the defaults
 # of the public build: an explicit environment variable, even empty, wins over the profile.
