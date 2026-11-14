@@ -147,10 +147,24 @@ def automations():
     return data.get("automations", data.get("jobs", data if isinstance(data, list) else []))
 
 
+def owner_turn(session_key, message):
+    """A turn as the owner: the local `openclaw agent` asks for operator.admin, as the Control UI of the owner does;
+    chat.send from `gateway call` gets least-privilege scopes, and owner-only tools (automations) refuse it."""
+    r = subprocess.run(["openclaw", "agent", "--agent", session_key.split(":")[1], "--session-key", session_key,
+                        "--message", message, "--json", "--timeout", str(TURN_TIMEOUT)],
+                       capture_output=True, text=True, timeout=TURN_TIMEOUT + 60)
+    try:
+        data = json.loads(r.stdout)
+        payloads = data.get("result", data).get("payloads") or []
+        return " ".join(p.get("text", "") for p in payloads) or r.stdout[-300:]
+    except (ValueError, AttributeError):
+        return (r.stdout + r.stderr)[-300:]
+
+
 def schedule(n):
     before = {a.get("id") for a in automations()}
-    answer = turn(session("schedule", n), "Create a scheduled task that runs every day at 09:00 and asks: "
-                  "'Say good morning to the garden.' Name it live-check-garden.")
+    answer = owner_turn(session("schedule", n), "Create a scheduled task that runs every day at 09:00 and asks: "
+                        "'Say good morning to the garden.' Name it live-check-garden.")
     new = [a for a in automations() if a.get("id") not in before]
     if not new:
         return False, f"no new automation; answer: {answer}"
@@ -177,6 +191,11 @@ def judge(judge_model):
                        "answer_model": os.environ.get("WORKBENCH_DEFAULT_MODEL", "")}, f)
         # The judge uses a proxy only when told (WORKBENCH_JUDGE_PROXY), not from HTTPS_PROXY.
         env = {**os.environ, "WORKBENCH_JUDGE_MODEL": judge_model, "WORKBENCH_JUDGE_PROXY": os.environ.get("HTTPS_PROXY", "")}
+        if judge_model.startswith("groq/"):
+            env.update(WORKBENCH_JUDGE_MODEL=judge_model[len("groq/"):], WORKBENCH_JUDGE_BASE_URL="https://api.groq.com/openai/v1",
+                       WORKBENCH_JUDGE_API_KEY=env.get("GROQ_API_KEY", ""),
+                       # Groq's free tier caps output tokens per minute (1000 for qwen3.8-27b).
+                       WORKBENCH_JUDGE_MAX_TOKENS=env.get("WORKBENCH_JUDGE_MAX_TOKENS", "900"))
         r = subprocess.run(["python3", f"{HOME}/plugins/aiwb-plugins/judge/skills/judge/scripts/judge.py", "--input",
                             "/tmp/live-ex.json"], capture_output=True, text=True, timeout=TURN_TIMEOUT, env=env)
         out = r.stdout + r.stderr

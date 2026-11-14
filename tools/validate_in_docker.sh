@@ -26,11 +26,13 @@
 #     --reinstall  — after the check: reinstall, uninstall by manifest, install again
 #                    after uninstall (tools/container_check_reinstall.sh); then an install with the
 #                    plugin layout before the rename and the current one over it (container_check_migration.sh)
-#     --live-model <OpenRouter id> — the scenario on a real model, without Claude (tools/live_model_check.py):
+#     --live-model <model> — the scenario on a real model, without Claude (tools/live_model_check.py); an OpenRouter
+#                    id, or groq/<id> for Groq (GROQ_API_KEY; its free tier allows far more requests a day):
 #                    chat, knowledge base, memory, a docx attachment, a scheduled task, a project agent, the judge.
 #                    Takes OPENROUTER_API_KEY from the environment or ~/.openclaw/.env (never printed); free
 #                    models (`:free`) cost nothing but use the key's daily request limit;
-#     --live-judge <OpenRouter id> — the judge model for --live-model, of another family; google/gemma-4-31b-it:free
+#     --live-judge <model> — the judge model for --live-model, of another family (OpenRouter id or groq/<id>);
+#                    google/gemma-4-31b-it:free
 #     --live-proxy <host:port> — for --live-model where OpenRouter is reachable only through a proxy on the host's
 #                    loopback (e.g. 127.0.0.1:12334): a relay (tools/tcp_relay.py) on the Docker bridge address
 #                    makes it reachable from the container, which gets it as HTTPS_PROXY for the check's duration
@@ -54,11 +56,13 @@ for ((i=0; i<${#args[@]}; i++)); do
     --live-proxy) live_proxy="${args[i+1]:-}"; i=$((i+1)) ;;
   esac
 done
-if [[ -n "$live_model" && -z "${OPENROUTER_API_KEY:-}" ]]; then
-  OPENROUTER_API_KEY="$(sed -n 's/^OPENROUTER_API_KEY=//p' "$HOME/.openclaw/.env" 2>/dev/null | tail -1)"
-  [[ -n "$OPENROUTER_API_KEY" ]] || { echo "--live-model needs OPENROUTER_API_KEY (environment or ~/.openclaw/.env)" >&2; exit 1; }
+if [[ -n "$live_model" ]]; then
+  [[ -z "${OPENROUTER_API_KEY:-}" ]] && OPENROUTER_API_KEY="$(sed -n 's/^OPENROUTER_API_KEY=//p' "$HOME/.openclaw/.env" 2>/dev/null | tail -1)"
+  [[ -z "${GROQ_API_KEY:-}" ]] && GROQ_API_KEY="$(sed -n 's/^GROQ_API_KEY=//p' "$HOME/.openclaw/.env" 2>/dev/null | tail -1)"
+  need=OPENROUTER_API_KEY; [[ "$live_model" == groq/* ]] && need=GROQ_API_KEY
+  [[ -n "${!need:-}" ]] || { echo "--live-model $live_model needs $need (environment or ~/.openclaw/.env)" >&2; exit 1; }
 fi
-export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
+export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}" GROQ_API_KEY="${GROQ_API_KEY:-}"
 container_proxy=""
 if [[ -n "$live_proxy" ]]; then
   bridge_ip="$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}' 2>/dev/null)"; bridge_ip="${bridge_ip:-172.17.0.1}"
@@ -157,10 +161,12 @@ su - tester -c "echo OPENROUTER_API_KEY=dummy-validate-only >> ~/.openclaw/.env"
 # --live-model: the real key and the model instead (the key comes in the container environment, never in the log).
 # --live-proxy: the Gateway and the judge reach OpenRouter through the proxy of the host (set after the install, which goes direct).
 [[ -n "$LIVE_PROXY" ]] && echo "export HTTPS_PROXY=$LIVE_PROXY HTTP_PROXY=$LIVE_PROXY NO_PROXY=localhost,127.0.0.1,::1" > /home/tester/.live-proxy
-[[ -n "$LIVE_MODEL" ]] && su - tester -c "sed -i /^OPENROUTER_API_KEY=/d ~/.openclaw/.env" && printf "OPENROUTER_API_KEY=%s\n" "$OPENROUTER_API_KEY" >> /home/tester/.openclaw/.env
+[[ -n "$LIVE_MODEL" ]] && su - tester -c "sed -i /^OPENROUTER_API_KEY=/d ~/.openclaw/.env" && printf "OPENROUTER_API_KEY=%s\n" "${OPENROUTER_API_KEY:-dummy-validate-only}" >> /home/tester/.openclaw/.env
+[[ -n "$LIVE_MODEL" && -n "$GROQ_API_KEY" ]] && printf "GROQ_API_KEY=%s\n" "$GROQ_API_KEY" >> /home/tester/.openclaw/.env
 # A profile names its own models (ENV); the container has no account for them, so these keep the defaults
 # of the public build: an explicit environment variable, even empty, wins over the profile.
-echo "export WORKBENCH_DEFAULT_MODEL=${LIVE_MODEL:+openrouter/$LIVE_MODEL} WORKBENCH_DEFAULT_RUNTIME= WORKBENCH_FALLBACK_MODELS= WORKBENCH_DREAMING_MODEL= WORKBENCH_JUDGE_MODEL= WORKBENCH_JUDGE_CRITERIA=" >> /home/tester/.profile
+case "$LIVE_MODEL" in groq/*|openrouter/*) LIVE_REF=$LIVE_MODEL ;; "") LIVE_REF= ;; *) LIVE_REF=openrouter/$LIVE_MODEL ;; esac
+echo "export WORKBENCH_DEFAULT_MODEL=$LIVE_REF WORKBENCH_DEFAULT_RUNTIME= WORKBENCH_FALLBACK_MODELS= WORKBENCH_DREAMING_MODEL= WORKBENCH_JUDGE_MODEL= WORKBENCH_JUDGE_CRITERIA=" >> /home/tester/.profile
 # The projects folder of the made-up Claude Code chats (container_check_catalog.sh): the installer passes it to the bridge.
 su - tester -c "echo WORKBENCH_CLAUDE_DESKTOP_ROOT=/home/tester/claude-projects >> ~/.openclaw/.env"
 # Knowledge base for every agent: a folder of notes, the note in a subfolder as in an Obsidian vault.
@@ -217,7 +223,7 @@ run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   { echo "IMAGE=${IMAGE[$d]} $(docker image inspect -f '{{index .RepoDigests 0}}' "${IMAGE[$d]}" 2>/dev/null)"
-    docker run --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
+    docker run --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
   } >"$out/install.log" 2>&1
   (( keep )) || docker rm -f "$name" >/dev/null 2>&1
 }

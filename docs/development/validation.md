@@ -23,6 +23,8 @@ cost nothing but use the key's daily request limit: about twenty turns per run, 
 requests a day without credits. Where OpenRouter is reachable only through a proxy on the host's loopback, add
 `--live-proxy 127.0.0.1:<port>`: a relay (`tools/tcp_relay.py`) on the Docker bridge address makes it reachable
 from the container for the run's duration.
+`--live-model groq/<id>` runs the same on Groq (`GROQ_API_KEY`), whose free tier allows far more requests a day;
+for example `--live-model groq/openai/gpt-oss-120b --live-judge groq/qwen/qwen3.8-27b`.
 
 ## Secret check before a commit
 
