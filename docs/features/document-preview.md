@@ -30,3 +30,20 @@ The text is cached by content next to the PDFs (same `cacheMb` limit). OpenClaw 
 limits (size, timeout, `maxChars`; a cut text is marked as partial). If LibreOffice is missing, the plugin
 does not register the extractor; if extraction fails, the attachment falls back to the previous note with the
 file path, and the agent reads the file with its own tools.
+
+## Searchable copy of a scan
+
+Ask the agent to make a scanned PDF searchable, and it makes a copy with a text layer: the text can then be
+selected, copied and found in any PDF viewer. The `aiwb-office` skill `searchable-pdf` runs
+[OCRmyPDF](https://ocrmypdf.readthedocs.io/) locally; nothing is uploaded.
+
+- The copy goes next to the original as `<name>.ocr.pdf`; the original is not changed, and an existing file is not
+  overwritten.
+- Pages that already have text stay as they are (OCRmyPDF's `--skip-text`); the others are recognized in every
+  installed Tesseract language except `osd` and `equ`, or in the languages you name.
+- A file is recognized at most 30 minutes.
+- The skill shows up when `ocrmypdf` and `tesseract` are installed, the same programs as for knowledge base scans
+  ([Knowledge base](knowledge.md)). If they are installed but do not run, the agent shows the error.
+
+To run it yourself: `node <aiwb-plugins>/office/skills/searchable-pdf/searchable-pdf.mjs scan.pdf [--out copy.pdf]
+[--ocr-langs eng+rus]`.
