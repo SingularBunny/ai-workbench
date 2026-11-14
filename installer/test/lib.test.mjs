@@ -1090,6 +1090,30 @@ test("dictation: Groq first, then OpenAI and OpenRouter; an explicit model or no
   assert.equal(dictationSteps({ GROQ_API_KEY: "k" }, undefined)[1].id, "tools.media.audio.enabled");
 });
 
+test("speech: WORKBENCH_TTS=silero installs a local model for Talk, keeps a provider set by hand", async () => {
+  const { ttsSteps, SILERO } = await import("../lib.mjs");
+  const opts = { home: "/h", script: "/src/silero-tts.py", uv: true, current: undefined, win: false };
+  const steps = ttsSteps({ WORKBENCH_TTS: "silero", WORKBENCH_TTS_SPEAKER: "baya" }, opts);
+  assert.deepEqual(steps.map((s) => s.kind), ["tts-env", "tts-env", "file-download", "file-copy", "config", "config", "config", "config"]);
+  const download = steps.find((s) => s.kind === "file-download");
+  assert.equal(download.sha256, SILERO.sha256);
+  assert.equal(download.file, "/h/.openclaw/workbench/tts/v5_6_ru.pt");
+  const tts = JSON.parse(steps.find((s) => s.id === "tts").argv[3]);
+  assert.equal(tts.provider, "tts-local-cli");
+  assert.equal(tts.auto, "off");
+  const cli = tts.providers["tts-local-cli"];
+  assert.equal(cli.command, "/h/.openclaw/workbench/tts/.venv/bin/python");
+  assert.deepEqual(cli.args.slice(-4), ["--speaker", "baya", "--out", "{{OutputPath}}"]);
+  assert.deepEqual(JSON.parse(steps.find((s) => s.id === "talk.providers").argv[3]), { "tts-local-cli": cli });
+  assert.equal(JSON.parse(steps.find((s) => s.id === "talk.realtime.mode").argv[3]), "stt-tts");
+  assert.ok(steps.find((s) => s.id === "tts packages").argv.includes("cpu"));
+  assert.deepEqual(ttsSteps({}, opts), []);
+  assert.deepEqual(ttsSteps({ WORKBENCH_TTS: "none" }, opts), []);
+  assert.deepEqual(ttsSteps({ WORKBENCH_TTS: "silero" }, { ...opts, current: "openai" }).map((s) => s.kind), ["keep-config"]);
+  assert.deepEqual(ttsSteps({ WORKBENCH_TTS: "silero" }, { ...opts, uv: null }).map((s) => s.kind), ["skip"]);
+  assert.deepEqual(ttsSteps({ WORKBENCH_TTS: "piper" }, opts).map((s) => s.kind), ["skip"]);
+});
+
 test("default model: providers outside the built-in catalog are refreshed before the model is written", async () => {
   const { modelProvidersToRefresh } = await import("../lib.mjs");
   const step = (value) => ({ kind: "config", id: "agents.defaults.model", argv: ["config", "set", "agents.defaults.model", JSON.stringify(value), "--strict-json"] });

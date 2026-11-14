@@ -102,6 +102,10 @@ Knowledge base folders for every agent, separated by ":" (an Obsidian vault is o
 
 Dictation (the chat microphone): speech-to-text model as provider/model, or none. Empty: the first provider with a key — Groq Whisper (free tier), OpenAI, OpenRouter's Whisper ([features/dictation.md](../features/dictation.md)). An existing tools.media.models setting is kept.
 
+### `WORKBENCH_TTS`, `WORKBENCH_TTS_SPEAKER`
+
+Tap to talk, spoken replies: silero — a local Russian Silero model through uv (about 1 GB, no key), or empty — none. `WORKBENCH_TTS_SPEAKER`: xenia (default), baya, kseniya, aidar, eugene ([features/dictation.md](../features/dictation.md)#tap-to-talk).
+
 ### `WORKBENCH_MCP_APPS`
 
 MCP Apps: interactive views from MCP servers in the chat (a sandbox on the Gateway port + 1, 18790 by default). 1 — enable, 0 — disable, empty — leave as is. Enable only for MCP servers you trust: the view HTML comes from the server. Restart the Gateway after the change.
@@ -175,6 +179,10 @@ Defaults to OpenRouter and `OPENROUTER_API_KEY`; for Ollama — http://127.0.0.1
 ### `WORKBENCH_JUDGE_CRITERIA`
 
 Custom criteria: path to a JSON list of {"id","name","question"}.
+
+### `WORKBENCH_JUDGE_MAX_TOKENS`
+
+Upper limit of the judge's answer in tokens (default 4096); lower it for a provider that caps tokens per minute (Groq's free tier: 900).
 
 ### `WORKBENCH_JUDGE_PROXY`
 

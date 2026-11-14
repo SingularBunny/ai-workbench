@@ -10,14 +10,14 @@
 //
 // Shows the install plan and changes nothing without consent (or --yes). Never prints secrets.
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -263,6 +263,19 @@ async function download(step) {
   console.log(`  sha256 ${got} — matches the release`);
 }
 
+// One file with a pinned sha256 (a speech model); a file already there with that sha256 is not downloaded again.
+async function downloadFile(step) {
+  const sha = (buf) => createHash("sha256").update(buf).digest("hex");
+  if (existsSync(step.file) && sha(readFileSync(step.file)) === step.sha256) { console.log("  already downloaded"); return; }
+  const r = await fetch(step.url);
+  if (!r.ok) throw new Error(`${step.url}: HTTP ${r.status}`);
+  const body = Buffer.from(await r.arrayBuffer());
+  if (sha(body) !== step.sha256) throw new Error(`sha256 mismatch: got ${sha(body)}, expected ${step.sha256}`);
+  mkdirSync(path.dirname(step.file), { recursive: true });
+  writeFileSync(step.file, body);
+  console.log(`  sha256 ${step.sha256} — matches`);
+}
+
 function loadEnvFile(file) {
   const env = {};
   if (!existsSync(file)) return env;
@@ -443,6 +456,9 @@ async function main() {
       ...(PLUGINS.own || []).some((p) => p.id === "aiwb-compare") ? freeProviderSteps(env) : [],
       // The composer microphone: a speech-to-text model for dictation, unless one is set already.
       ...dictationSteps(env, configValue("tools.media.models")),
+      // Talk's spoken replies (WORKBENCH_TTS=silero): a local model; a speech provider set by hand is kept, our own is refreshed.
+      ...(env.WORKBENCH_TTS ? ttsSteps(env, { home, script: path.join(projectRoot, "installer", "tts", "silero-tts.py"), uv: which("uv"),
+        current: String(configValue("tts.providers.tts-local-cli.command") ?? "").includes(path.join(".openclaw", "workbench", "tts")) ? null : configValue("tts.provider") }) : []),
       // Network proxy (WORKBENCH_PROXY_URL / _HOSTS / _ROUTES): proxy.proxyUrl and, with the fork, per-host routes.
       ...proxySteps({ url: env.WORKBENCH_PROXY_URL, hosts: env.WORKBENCH_PROXY_HOSTS, routes: env.WORKBENCH_PROXY_ROUTES,
         fork: Boolean(env.WORKBENCH_OPENCLAW_PACKAGE) }),
@@ -649,6 +665,14 @@ async function main() {
     }
     if (step.kind === "mcp-download") {
       try { await download(step); } catch (e) { failed++; console.error(`✗ mcp ${step.id}: ${e.message}`); }
+      continue;
+    }
+    if (step.kind === "file-download") {
+      try { await downloadFile(step); } catch (e) { failed++; console.error(`✗ ${step.id}: ${e.message}`); }
+      continue;
+    }
+    if (step.kind === "file-copy") {
+      try { mkdirSync(path.dirname(step.to), { recursive: true }); copyFileSync(step.from, step.to); } catch (e) { failed++; console.error(`✗ ${step.id}: ${e.message}`); }
       continue;
     }
     if (step.kind === "llama-download") {

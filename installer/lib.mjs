@@ -292,6 +292,45 @@ export function dictationSteps(env, current) {
 }
 
 /**
+ * Spoken replies for Talk (the chat's voice mode) with a local Silero model: no key, no network after install.
+ * WORKBENCH_TTS=silero installs it into ~/.openclaw/workbench/tts: a uv virtual environment with CPU PyTorch and
+ * num2words, the model (pinned sha256) and installer/tts/silero-tts.py, then points OpenClaw's tts-local-cli
+ * provider at it for both tts and talk, with talk.realtime.mode stt-tts (browser Talk: dictation model → chat →
+ * speech). An authored tts.provider (current) is kept, as is a missing uv (the reason is printed).
+ */
+export const SILERO = {
+  url: "https://models.silero.ai/models/tts/ru/v5_6_ru.pt",
+  sha256: "04cc9b1d08ce38bcaa9d02c488d80d3e6806d17f7eaa7c95982f36a3cbf50b2e",
+  speakers: ["xenia", "baya", "kseniya", "aidar", "eugene"],
+};
+
+export function ttsSteps(env, { home, script, current, uv, win = process.platform === "win32" }) {
+  const pick = String(env.WORKBENCH_TTS ?? "").trim();
+  if (!pick || pick === "none") return [];
+  if (pick !== "silero") return [{ kind: "skip", id: "tts", reason: `WORKBENCH_TTS=${pick}: only silero is installed by the installer` }];
+  if (current) return [{ kind: "keep-config", id: "tts", reason: `tts.provider is ${current}, kept` }];
+  if (!uv) return [{ kind: "skip", id: "tts silero", reason: "uv is not installed (https://docs.astral.sh/uv/)" }];
+  const dir = path.join(home, ".openclaw", "workbench", "tts");
+  const python = path.join(dir, ".venv", win ? "Scripts" : "bin", win ? "python.exe" : "python");
+  const model = path.join(dir, path.basename(SILERO.url));
+  const speaker = String(env.WORKBENCH_TTS_SPEAKER ?? "").trim() || SILERO.speakers[0];
+  const provider = { command: python, args: ["-I", path.join(dir, "silero-tts.py"), "--model", model, "--speaker", speaker, "--out", "{{OutputPath}}"],
+    outputFormat: "wav", timeoutMs: 120000 };
+  return [
+    { kind: "tts-env", id: "tts venv", note: dir, exec: "uv", argv: ["venv", "--allow-existing", "--python", "3.12", path.join(dir, ".venv")] },
+    { kind: "tts-env", id: "tts packages", note: "CPU PyTorch, num2words", exec: "uv",
+      argv: ["pip", "install", "--python", python, "--torch-backend", "cpu", "torch", "num2words"] },
+    { kind: "file-download", id: "silero model", note: path.basename(SILERO.url), url: SILERO.url, sha256: SILERO.sha256, file: model },
+    { kind: "file-copy", id: "silero-tts.py", from: script, to: path.join(dir, "silero-tts.py") },
+    { kind: "config", id: "tts", note: `tts-local-cli: Silero, ${speaker}`,
+      argv: ["config", "set", "tts", JSON.stringify({ auto: "off", provider: "tts-local-cli", providers: { "tts-local-cli": provider } }), "--strict-json"] },
+    { kind: "config", id: "talk.provider", argv: ["config", "set", "talk.provider", JSON.stringify("tts-local-cli"), "--strict-json"] },
+    { kind: "config", id: "talk.providers", argv: ["config", "set", "talk.providers", JSON.stringify({ "tts-local-cli": provider }), "--strict-json"] },
+    { kind: "config", id: "talk.realtime.mode", argv: ["config", "set", "talk.realtime.mode", JSON.stringify("stt-tts"), "--strict-json"] },
+  ];
+}
+
+/**
  * Own plugins OpenClaw already loads from the same folder are not linked again: `plugins install --link` of an
  * already linked plugin only repeats the record, and it fails outright for a plugin inside another plugin's folder
  * ("package owner … has conflicting child rows"). The step stays an own plugin (its skills still count) with
@@ -327,6 +366,7 @@ export function formatPlan(steps) {
     hook: "profile git hook", profile: "profile from git", ide: "IDE agent", "ide-restore": "restore IDE agent",
     "ide-remove": "remove IDE agent", collision: "duplicate skill name", "skill-link": "project skill",
     unlink: "remove link", timer: "systemd timer", "timer-remove": "remove timer", "llama-download": "llama.cpp (release)",
+    "tts-env": "speech environment", "file-download": "download", "file-copy": "copy file",
     "env-remove": "remove from .env",
     "chrome-host": "Chrome extension host", "chrome-host-remove": "remove Chrome host", "plugin-rename": "renamed plugins",
     backup: "backup", "backup-schedule": "backup schedule", dropin: "systemd drop-in", "dropin-remove": "remove drop-in",
