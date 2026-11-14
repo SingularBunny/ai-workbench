@@ -48,4 +48,16 @@ substance problems: those usually show only in the user's next message ("you mis
 not work"), which the judge does not see. Treat its report as a second opinion on the answer text, not as a
 measure of quality.
 
+**The PASS rate and how much of it to believe.** Every verdict goes to a log on this machine,
+`~/.openclaw/judge/verdicts.jsonl` (question, answer, verdict, judge; `WORKBENCH_JUDGE_LOG` moves it, `off` turns it off).
+`judge.py --stats` shows, per judge and set of criteria, the share of PASS it gives, with a 95% interval. That share is
+the judge's, not the share of good answers: a lenient judge passes bad answers too. To see how far apart the two are,
+give your own verdict on some logged answers: `judge.py --to-label 10` lists recent ones, `judge.py --label <id>
+pass|fail` records yours. Once there are answers you passed and answers you failed, `--stats` also shows how often
+the judge agrees with you on each, and the share of good answers corrected for its errors, with an interval. This is
+the method of [Lee et al., 2026](https://arxiv.org/abs/2511.21140), the Rogan–Gladen correction with their interval.
+The interval narrows as you label more answers; a judge that fails few of the answers you failed is too lenient.
+There is no fixed alarm threshold such as "PASS above 80%": a high rate is right when the answers are good. Labels
+hold for one judge and one set of criteria; change either and the count starts again.
+
 Skill evals on a non-Claude model: [Evals](evals.md).
