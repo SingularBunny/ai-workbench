@@ -163,7 +163,8 @@ holds every turn, the ones made in OpenClaw included. So Claude Code in a termin
 and continue where OpenClaw stopped — also when OpenClaw is not running at all:
 
 - **Continue in terminal** in the chat's menu (sidebar row, chat header) copies the command,
-  `cd <project folder> && claude --resume <id>`.
+  `cd <project folder> && claude --resume <id>`. The first time Claude Code opens a folder it asks whether you
+  trust it; chats without a project run in `~/claude-desktop/_no_space`.
 - `~/.openclaw/workbench/claude-chats.md` lists every such chat by project folder, newest first, with its command.
   The bridge rewrites it after each turn and every 10 minutes; it is a plain file, readable without OpenClaw.
 - Claude Code's own `/resume` list does not show these conversations (OpenClaw starts them as `sdk-cli`), and it
