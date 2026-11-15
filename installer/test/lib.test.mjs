@@ -829,12 +829,14 @@ test("bridge adoption in the Gateway: the fork grants the bridge exactly its Gat
   assert.equal(JSON.parse(step.argv[3]), "aiwb-claude-bridge=sessions.catalog.list,sessions.catalog.import,sessions.patch,session.visibility.set,sessions.list");
   const memory = bridgeAdoptionSteps({ fork: true })[1];
   assert.deepEqual(memory.argv, ["config", "set", "env.vars.OPENCLAW_MEMORY_INDEX_ON_START", "\"1\"", "--strict-json"]);
-  assert.equal(bridgeAdoptionSteps({ fork: true }).length, 5);
+  assert.equal(bridgeAdoptionSteps({ fork: true }).length, 6);
   assert.equal(bridgeAdoptionSteps({ fork: true })[2].id, "env.vars.OPENCLAW_SESSION_OBSERVER_MIN_INTERVAL_MS");
   // Restarts wait up to 30 minutes for running agent turns (a string, as the fork reads env.vars).
   const wait = bridgeAdoptionSteps({ fork: true })[4];
   assert.deepEqual(wait.argv, ["config", "set", "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS", "\"1800000\"", "--strict-json"]);
-  assert.equal(bridgeAdoptionSteps({ fork: true, chrome: true })[5].id, "env.vars.OPENCLAW_CLAUDE_CHROME");
+  // The image and pdf tools take only the configured model.
+  assert.deepEqual(bridgeAdoptionSteps({ fork: true })[5].argv, ["config", "set", "env.vars.OPENCLAW_MEDIA_MODEL_OVERRIDE", "\"0\"", "--strict-json"]);
+  assert.equal(bridgeAdoptionSteps({ fork: true, chrome: true })[6].id, "env.vars.OPENCLAW_CLAUDE_CHROME");
 });
 
 test("fork env.vars settings: one batch write at the front of the plan, recorded key by key", async () => {
@@ -852,7 +854,7 @@ test("fork env.vars settings: one batch write at the front of the plan, recorded
   assert.deepEqual(batch.keys, ["env.vars.OPENCLAW_WORKER_PENDING_TASKS", "env.vars.OPENCLAW_WORKER_PENDING_BYTES", "env.vars.OPENCLAW_WORKER_HEAP_MB",
     "env.vars.OPENCLAW_PLUGIN_GATEWAY_METHODS", "env.vars.OPENCLAW_MEMORY_INDEX_ON_START",
     "env.vars.OPENCLAW_SESSION_OBSERVER_MIN_INTERVAL_MS", "env.vars.OPENCLAW_ACTIVITY_RECAP_MIN_INTERVAL_MS",
-    "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS"]);
+    "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS", "env.vars.OPENCLAW_MEDIA_MODEL_OVERRIDE"]);
   assert.equal(ops.find((o) => o.path === "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS").value, "1800000");
   // Values stay the JSON values of the single writes (strings), not re-encoded.
   assert.deepEqual(ops.find((o) => o.path === "env.vars.OPENCLAW_ACTIVITY_RECAP_MIN_INTERVAL_MS").value, "600000");
@@ -861,7 +863,7 @@ test("fork env.vars settings: one batch write at the front of the plan, recorded
   assert.deepEqual(rest, [plugin, other, plan.at(-1)]);
   // The uninstall manifest still records every key.
   assert.deepEqual(touchedBy(batched).config, touchedBy(plan).config);
-  assert.match(formatPlan([batch]), /settings, one write\s+OPENCLAW_WORKER_PENDING_TASKS, .*OPENCLAW_RESTART_AGENT_RUN_WAIT_MS {2}env\.vars/);
+  assert.match(formatPlan([batch]), /settings, one write\s+OPENCLAW_WORKER_PENDING_TASKS, .*OPENCLAW_MEDIA_MODEL_OVERRIDE {2}env\.vars/);
   // Without the fork there is nothing to batch: the plan is unchanged.
   const official = [plugin, other];
   assert.equal(batchEnvVarSteps(official), official);

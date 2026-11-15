@@ -1098,6 +1098,10 @@ export function bridgeAdoptionSteps({ fork, chrome = false }) {
   // stays bounded by upstream's budgets). The systemd stop timeout follows it: gatewayStopTimeoutSteps.
   { kind: "config", id: "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS", note: "restarts and stops wait for running agent turns",
     argv: ["config", "set", "env.vars.OPENCLAW_RESTART_AGENT_RUN_WAIT_MS", JSON.stringify(String(RESTART_AGENT_RUN_WAIT_MS)), "--strict-json"] },
+  // The image and pdf tools answer with the configured model only: upstream lets the agent name any model there,
+  // paid ones included (15.11.2026, a free agent sent a scan to a paid Gemini). The owner sets the model in config.
+  { kind: "config", id: "env.vars.OPENCLAW_MEDIA_MODEL_OVERRIDE", note: "image and pdf tools use the configured model",
+    argv: ["config", "set", "env.vars.OPENCLAW_MEDIA_MODEL_OVERRIDE", JSON.stringify("0"), "--strict-json"] },
   // Claude in Chrome for agents on Claude CLI (WORKBENCH_CLAUDE_CHROME=1): browser control, so only on request.
   ...(chrome ? [{ kind: "config", id: "env.vars.OPENCLAW_CLAUDE_CHROME", note: "Claude in Chrome for Claude CLI agents",
     argv: ["config", "set", "env.vars.OPENCLAW_CLAUDE_CHROME", JSON.stringify("1"), "--strict-json"] }] : [])];
