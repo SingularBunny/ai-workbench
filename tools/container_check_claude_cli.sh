@@ -74,9 +74,10 @@ if [[ "$unmanaged" == false ]]; then
   for i in $(seq 1 60); do [[ -s /tmp/cli-stop-turn.exit ]] && break; sleep 1; done; cat /tmp/cli-stop-turn.exit
   for i in $(seq 1 30); do pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null || break; sleep 1; done
   grep -q FAKE_CLAUDE_OK /tmp/cli-stop-turn.json; echo "CLI_STOP_WAITS_FOR_TURN=$?"
-  grep -q 'running agent turns finished' /tmp/gw.log; echo "CLI_STOP_WAIT_LOGGED=$?"
+  # 2026.11.5 logs the fork's own wait; 2026.11.3 waits inside upstream's drain.
+  grep -qE 'running agent turns finished|active-work drain settled' /tmp/gw.log; echo "CLI_STOP_WAIT_LOGGED=$?"
   ! pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null; echo "CLI_STOP_GATEWAY_EXITED=$?"
-  grep -E 'waiting up to|agent turns finished' /tmp/gw.log | tail -2
+  grep -E 'waiting up to|agent turns finished|drain settled' /tmp/gw.log | tail -2
   rm -f /tmp/fake-claude-delay /tmp/cli-stop-turn.exit
 fi
 
