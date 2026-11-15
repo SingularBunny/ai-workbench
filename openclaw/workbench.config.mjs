@@ -111,18 +111,27 @@ export function settings(ctx) {
     }]);
   }
 
-  // Claude CLI on a remote VM via acpx (tested on a remote VM bench).
+  // ACP agents through acpx: Claude CLI on a remote VM, JetBrains Junie.
+  const acpAgents = [];
+  // Claude CLI on a remote VM (tested on a remote VM bench).
   // acp-reaper on the VM is required: without it, agent commands are left orphaned on disconnect.
   if (ctx.env.WORKBENCH_VM_SSH) {
-    out.push(
-      ["acp", { enabled: true, allowedAgents: ["claude"] }],
-      ["plugins.entries.acpx.config.agents.claude", {
-        command: "ssh",
-        args: ["-T", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", "${WORKBENCH_VM_SSH}",
-          "exec", "setsid", "-w", "acp-reaper", "claude-agent-acp"],
-      }],
-    );
+    acpAgents.push("claude");
+    out.push(["plugins.entries.acpx.config.agents.claude", {
+      command: "ssh",
+      args: ["-T", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", "${WORKBENCH_VM_SSH}",
+        "exec", "setsid", "-w", "acp-reaper", "claude-agent-acp"],
+    }]);
   }
+  // JetBrains Junie CLI (docs/integrations/junie.md): its own login, spends JetBrains AI credits. A chat hands itself
+  // to Junie with `/acp spawn junie --bind here`; an agent hands Junie one task with
+  // sessions_spawn({ runtime: "acp", agentId: "junie" }). No separate OpenClaw agent: OpenClaw honours an agent's
+  // runtime.type "acp" only in channel bindings and spawns, so its ordinary chat would answer with the default model.
+  if (ctx.env.WORKBENCH_JUNIE) {
+    acpAgents.push("junie");
+    out.push(["plugins.entries.acpx.config.agents.junie", { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
+  }
+  if (acpAgents.length) out.push(["acp", { enabled: true, backend: "acpx", allowedAgents: acpAgents }]);
   return out;
 }
 
@@ -180,8 +189,8 @@ export const PLUGINS = {
       commit: "fa4eb54397ee2faccb6940512a19c017cb1337f3" },   // 03.11.2026
   },
   bases: [],
-  // Needed only if WORKBENCH_VM_SSH is set.
-  runtime: [{ id: "@openclaw/acpx", when: "WORKBENCH_VM_SSH" },
+  // Needed only if WORKBENCH_VM_SSH or WORKBENCH_JUNIE is set.
+  runtime: [{ id: "@openclaw/acpx", when: ["WORKBENCH_VM_SSH", "WORKBENCH_JUNIE"] },
     // Local embeddings model for memory search (WORKBENCH_LOCAL_EMBEDDINGS).
     { id: "@openclaw/llama-cpp-provider", when: "WORKBENCH_LOCAL_EMBEDDINGS" },
     // Free-tier model providers shipped as separate packages, installed once their key is in .env

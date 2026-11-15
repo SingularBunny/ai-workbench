@@ -158,7 +158,8 @@ export function buildPlan({ settings, plugins, pluginsRoot, projectRoot, profile
         "--force", "--accept-capabilities"] });
   }
   for (const r of plugins.runtime) {
-    if (r.when && !env[r.when]) continue;
+    // when: a .env key, or several keys of which any one is enough.
+    if (r.when && ![].concat(r.when).some((k) => env[k])) continue;
     // spec: where it comes from when that is not its id (a ClawHub plugin, `clawhub:<name>`).
     steps.push({ kind: "runtime", id: r.id, argv: ["plugins", "install", r.spec || r.id, "--force"], ...(r.optional ? { optional: r.optional } : {}) });
   }

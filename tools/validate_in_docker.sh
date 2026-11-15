@@ -148,6 +148,8 @@ getent passwd "$HOST_UID" | cut -d: -f1 | xargs -r userdel -r 2>/dev/null
 useradd -m -u "$HOST_UID" -d /home/tester -s /bin/bash tester 2>/dev/null || true
 mkdir -p /home/tester/bin && printf "#!/bin/sh\necho \"claude stub: not executed\" >&2; exit 0\n" > /home/tester/bin/claude
 [[ -d /mnt/profile-ro ]] && mkdir -p /home/tester/plugins && cp -a /mnt/profile-ro /home/tester/plugins/profile
+# JetBrains Junie as an ACP agent (container_check_junie.sh): the stand-in answers ACP as junie --acp=true does.
+install -m 755 /opt/ai-workbench/tools/fake_junie_acp.py /home/tester/bin/junie
 chmod +x /home/tester/bin/claude && chown -R tester /home/tester/bin /home/tester 2>/dev/null || true
 # Clones are mounted under another uid — without safe.directory git does not trust them.
 su - tester -c "git config --global --add safe.directory \"*\""
@@ -174,6 +176,7 @@ su - tester -c "echo WORKBENCH_CLAUDE_DESKTOP_ROOT=/home/tester/claude-projects 
 su - tester -c "mkdir -p ~/knowledge/garden && echo The orchard quince is pruned in late February. > ~/knowledge/garden/pruning.md && echo WORKBENCH_KNOWLEDGE=~/knowledge >> ~/.openclaw/.env"
 # Fork presets: with the fork package catalog-owner is checked by container_check_projects.sh; without it the
 # installer skips them and the owner-mark check is skipped too.
+su - tester -c "echo WORKBENCH_JUNIE=/home/tester/bin/junie >> ~/.openclaw/.env"
 su - tester -c "echo WORKBENCH_FORK_PRESETS=worker-limits,catalog-owner >> ~/.openclaw/.env"
 [[ -n "$OC_SHA" ]] && su - tester -c "printf \"WORKBENCH_OPENCLAW_PACKAGE=/mnt/openclaw.tgz\nWORKBENCH_OPENCLAW_PACKAGE_SHA256=$OC_SHA\n\" >> ~/.openclaw/.env"
 # As after the first Chromium run: the browser data folder exists, so the installer registers the extension host.
@@ -203,6 +206,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   bash /opt/ai-workbench/tools/container_check_chats.sh
   bash /opt/ai-workbench/tools/container_check_catalog.sh
   bash /opt/ai-workbench/tools/container_check_claude_cli.sh
+  bash /opt/ai-workbench/tools/container_check_junie.sh
   bash /opt/ai-workbench/tools/container_check_projects.sh
   bash /opt/ai-workbench/tools/container_check_office.sh
   bash /opt/ai-workbench/tools/container_check_plan.sh

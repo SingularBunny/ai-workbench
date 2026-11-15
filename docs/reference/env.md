@@ -178,6 +178,12 @@ Chat attachments (tools/files-backup.sh): a local folder and an rclone remote of
 
 Claude CLI on a VM: user@host from ~/.ssh/config. The VM needs claude-agent-acp, acp-reaper (tools/remote-vm/acp-reaper) and the project at the same absolute path.
 
+## JetBrains Junie
+
+### `WORKBENCH_JUNIE`
+
+JetBrains Junie CLI as an ACP agent ([integrations/junie.md](../integrations/junie.md)): the full path to junie, for example /home/you/.local/bin/junie. Registers Junie as the ACP agent junie (/acp spawn junie in a chat); its turns spend JetBrains AI credits. Log in to Junie yourself first (run junie once). Installs the acpx plugin.
+
 ## Judge and evals
 
 ### `WORKBENCH_JUDGE_MODEL`

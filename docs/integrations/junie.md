@@ -11,13 +11,17 @@ the way to use those credits from OpenClaw.
    and `~/.local/bin/junie`).
 2. Log in: run `~/.local/bin/junie` once and sign in with your JetBrains account. Junie keeps the login itself.
 3. Set `WORKBENCH_JUNIE` in `~/.openclaw/.env` to the full path of `junie` and run the installer again. It installs
-   `acpx`, registers Junie as the ACP agent `junie` and adds the **Junie** agent.
+   `acpx` and registers Junie as the ACP agent `junie`.
 
 ## Use
 
-- **The Junie agent.** Pick **Junie** in the agent list of the chat: every turn of that chat goes to Junie.
-- **One task from another agent.** An agent can hand Junie a single task and get the result back in its own turn:
-  `sessions_spawn({ runtime: "acp", agentId: "junie", task: "..." })`, or `/acp spawn junie` in the chat.
+- **Hand a chat to Junie.** Type `/acp spawn junie --bind here` in a chat: the chat is bound to a Junie session, and
+  every following message goes to Junie until you close it (`/acp close`). Owner-only: the Control UI owner can.
+- **One task from an agent.** An agent can hand Junie a single task and get the result back in its own turn:
+  `sessions_spawn({ runtime: "acp", agentId: "junie", task: "..." })`.
+
+There is no separate "Junie" agent in the agent list: OpenClaw sends an agent's turns to an ACP harness only through
+these two paths, so such an agent's ordinary chat would answer with the default model.
 
 Junie works with its own permissions on the Gateway machine; OpenClaw's sandbox and read-only modes do not apply
 to it. The model is Junie's (its own settings or `--model`), not the OpenClaw agent's.
