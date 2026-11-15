@@ -604,6 +604,11 @@ test("PDF model: the pdf tool's model, through the agent runtime", () => {
   assert.deepEqual(d["agents.defaults.pdfModel"], { primary: "anthropic/small" });
   assert.deepEqual(d['agents.defaults.models["anthropic/small"].agentRuntime'], { id: "claude-cli" });
   assert.ok(!('agents.defaults.models["groq/x"].agentRuntime' in get({ WORKBENCH_PDF_MODEL: "groq/x" })));
+  // The image tool's model the same way; one model for both is written once.
+  const both = REAL.settings({ home: "/h", sep: "/", env: { WORKBENCH_DEFAULT_MODEL: "anthropic/big", WORKBENCH_DEFAULT_RUNTIME: "claude-cli",
+    WORKBENCH_PDF_MODEL: "anthropic/small", WORKBENCH_IMAGE_MODEL: "anthropic/small" } });
+  assert.deepEqual(Object.fromEntries(both)["agents.defaults.imageModel"], { primary: "anthropic/small" });
+  assert.equal(both.filter(([k]) => k === 'agents.defaults.models["anthropic/small"].agentRuntime').length, 1);
 });
 
 test("default agent name: the model family, not the id", () => {

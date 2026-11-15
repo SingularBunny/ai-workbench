@@ -42,6 +42,10 @@ Dreaming model — the nightly move of notes into MEMORY.md; empty means the age
 
 PDF model — reads PDFs and scans for agents whose own model cannot (the pdf tool); empty leaves it off. anthropic/claude-haiku-5-5 with `WORKBENCH_DEFAULT_RUNTIME=claude-cli` reads them by Claude subscription (its limits).
 
+### `WORKBENCH_IMAGE_MODEL`
+
+Image model — looks at images for agents whose own model cannot (the image tool); empty leaves it off. The same anthropic/claude-haiku-5-5 with `WORKBENCH_DEFAULT_RUNTIME=claude-cli` works by Claude subscription.
+
 ### `WORKBENCH_LOCAL_EMBEDDINGS`
 
 Semantic memory search with a local embedding model (llama-cpp plugin): cpu, or vulkan for the GPU (picks a discrete NVIDIA card by itself; vulkan:&lt;index from vulkaninfo&gt; — explicitly). The one-time server setup is interactive: openclaw models auth login --provider llama-cpp --method local.

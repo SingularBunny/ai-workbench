@@ -49,14 +49,17 @@ export function settings(ctx) {
     }
   }
 
-  // PDF model of the pdf tool (docs/features/document-preview.md): it reads PDFs, scans included, for agents whose own
-  // model cannot. With WORKBENCH_DEFAULT_RUNTIME it runs on the same runtime: on Claude CLI the fork reads the PDF in
-  // one isolated CLI turn (Claude by subscription, no API key); without the setting the pdf tool stays as OpenClaw has it.
-  const pdfModel = ctx.env.WORKBENCH_PDF_MODEL;
-  if (pdfModel) {
-    out.push(["agents.defaults.pdfModel", { primary: pdfModel }]);
-    if (ctx.env.WORKBENCH_DEFAULT_RUNTIME && pdfModel !== model && pdfModel !== dreaming) {
-      out.push([`agents.defaults.models[${JSON.stringify(pdfModel)}].agentRuntime`, { id: ctx.env.WORKBENCH_DEFAULT_RUNTIME }]);
+  // Models of the pdf and image tools (docs/features/document-preview.md): they read PDFs, scans and images for agents
+  // whose own model cannot. With WORKBENCH_DEFAULT_RUNTIME they run on the same runtime: on Claude CLI the fork asks
+  // them in one isolated CLI turn (Claude by subscription, no API key); without the settings the tools stay as
+  // OpenClaw has them.
+  const runtimeSet = new Set([model, dreaming]);
+  for (const [key, ref] of [["agents.defaults.pdfModel", ctx.env.WORKBENCH_PDF_MODEL], ["agents.defaults.imageModel", ctx.env.WORKBENCH_IMAGE_MODEL]]) {
+    if (!ref) continue;
+    out.push([key, { primary: ref }]);
+    if (ctx.env.WORKBENCH_DEFAULT_RUNTIME && !runtimeSet.has(ref)) {
+      runtimeSet.add(ref);
+      out.push([`agents.defaults.models[${JSON.stringify(ref)}].agentRuntime`, { id: ctx.env.WORKBENCH_DEFAULT_RUNTIME }]);
     }
   }
 
