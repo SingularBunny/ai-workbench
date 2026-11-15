@@ -540,6 +540,17 @@ test("Claude CLI turns: unmanaged only with the fork package, background agents 
   assert.equal(get({ WORKBENCH_OPENCLAW_PACKAGE: "/p/openclaw.tgz" })["plugins.entries.anthropic.config.managedTurns"], false);
 });
 
+test("shared chat context across switches (F72): only with the fork package", () => {
+  const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
+  const plain = get({ WORKBENCH_JUNIE: "/j" });
+  assert.ok(!("plugins.entries.anthropic.config.cliHistory" in plain));
+  assert.ok(!("seedParentHistory" in plain.acp));
+  const fork = get({ WORKBENCH_JUNIE: "/j", WORKBENCH_OPENCLAW_PACKAGE: "/p/openclaw.tgz" });
+  assert.deepEqual(fork["plugins.entries.anthropic.config.cliHistory"], { allowUnknownAuth: true, maxUnseenTurns: 200 });
+  assert.equal(fork.acp.seedParentHistory, true);
+  assert.deepEqual(fork.acp.allowedAgents, ["junie"]);
+});
+
 test("default model: runtime and fallbacks only when set", () => {
   const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
   const plain = get({});

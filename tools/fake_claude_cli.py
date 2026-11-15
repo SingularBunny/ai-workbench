@@ -70,6 +70,10 @@ for line in sys.stdin:
         send({"type": "control_response", "response": {"subtype": "success", "request_id": msg.get("request_id"),
                                                        "response": {"commands": [], "models": []} if req.get("subtype") == "initialize" else {}}})
     elif msg.get("type") == "user":
+        # What the turn got: a check looks for history OpenClaw put into the prompt.
+        call.setdefault("userMessages", []).append(msg.get("message", {}).get("content", ""))
+        with open(os.path.join(LOG, f"call-{os.getpid()}.json"), "w", encoding="utf-8") as f:
+            json.dump(call, f, ensure_ascii=False)
         # A long turn for "is the turn running" checks: delay seconds come from a file.
         try:
             time.sleep(float(open("/tmp/fake-claude-delay").read().strip() or 0))

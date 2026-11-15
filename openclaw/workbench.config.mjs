@@ -71,6 +71,10 @@ export function settings(ctx) {
   // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them. Only with the fork:
   // the official build's anthropic plugin rejects unknown keys.
   if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.managedTurns", false]);
+  // A chat that switches models keeps one conversation (fork F72): back on Claude CLI, Claude gets the turns other
+  // models and agents wrote, also in a fresh Claude session with its own CLI login (one owner, no API key to check).
+  // The turn count is bounded by the history character budget, not by the upstream 8.
+  if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.cliHistory", { allowUnknownAuth: true, maxUnseenTurns: 200 }]);
   // Managed turns (the official build, or the fork with the switch on) keep Claude's background agents and
   // workflows: OpenClaw allows exactly these two native tools there (managedNativeTools, docs gateway/cli-backends.md).
   out.push(["plugins.entries.anthropic.config.managedNativeTools.default", ["Agent", "Workflow"]]);
@@ -131,7 +135,10 @@ export function settings(ctx) {
     acpAgents.push("junie");
     out.push(["plugins.entries.acpx.config.agents.junie", { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
   }
-  if (acpAgents.length) out.push(["acp", { enabled: true, backend: "acpx", allowedAgents: acpAgents }]);
+  // With the fork (F72) an agent a chat is handed to gets the chat so far, and its replies stay in the history the
+  // next model sees.
+  if (acpAgents.length) out.push(["acp", { enabled: true, backend: "acpx", allowedAgents: acpAgents,
+    ...(ctx.env.WORKBENCH_OPENCLAW_PACKAGE ? { seedParentHistory: true } : {}) }]);
   return out;
 }
 

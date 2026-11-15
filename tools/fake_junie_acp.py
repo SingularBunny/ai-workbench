@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stand-in for `junie --acp=true` in tools/validate_in_docker.sh: a minimal ACP agent over stdio.
 initialize and session/new answer as Junie does; session/prompt streams one message
-"FAKE_JUNIE_OK <prompt text>" and ends the turn. Every request goes to $FAKE_JUNIE_LOG (default
+"FAKE_JUNIE_OK <the end of the prompt text>" (a seeded chat history comes first) and ends the turn. Every request goes to $FAKE_JUNIE_LOG (default
 /tmp/fake-junie.jsonl), so a check sees which methods OpenClaw called and with what."""
 import json
 import os
@@ -39,7 +39,7 @@ for line in sys.stdin:
     elif method == "session/prompt":
         text = " ".join(b.get("text", "") for b in params.get("prompt", []) if b.get("type") == "text")
         send({"method": "session/update", "params": {"sessionId": params.get("sessionId"), "update": {
-            "sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": f"FAKE_JUNIE_OK {text[:200]}"}}}})
+            "sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": f"FAKE_JUNIE_OK {text[-200:]}"}}}})
         result = {"stopReason": "end_turn"}
     else:
         result = {}
