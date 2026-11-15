@@ -66,6 +66,18 @@ if [[ "$unmanaged" == false ]]; then
   openclaw agent --agent main -m "Hello again" --json > /tmp/cli-turn.json 2>&1; echo "CLI_FORK_MANAGED_TURN_EXIT=$?"
   FORK_MANAGED=1 check_turn
   retry openclaw config set plugins.entries.anthropic.config.managedTurns false --strict-json
+
+  # F44: a stop (SIGTERM, as systemctl stop) during a turn waits for it; the reply arrives, then the Gateway exits.
+  restart; echo 20 > /tmp/fake-claude-delay
+  (openclaw agent --agent main -m "Long turn" --json > /tmp/cli-stop-turn.json 2>&1; echo "CLI_STOP_TURN_EXIT=$?" > /tmp/cli-stop-turn.exit) &
+  sleep 8; pkill -TERM -u "$(id -u)" -f '^openclaw-gateway'
+  for i in $(seq 1 60); do [[ -s /tmp/cli-stop-turn.exit ]] && break; sleep 1; done; cat /tmp/cli-stop-turn.exit
+  for i in $(seq 1 30); do pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null || break; sleep 1; done
+  grep -q FAKE_CLAUDE_OK /tmp/cli-stop-turn.json; echo "CLI_STOP_WAITS_FOR_TURN=$?"
+  grep -q 'running agent turns finished' /tmp/gw.log; echo "CLI_STOP_WAIT_LOGGED=$?"
+  ! pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null; echo "CLI_STOP_GATEWAY_EXITED=$?"
+  grep -E 'waiting up to|agent turns finished' /tmp/gw.log | tail -2
+  rm -f /tmp/fake-claude-delay /tmp/cli-stop-turn.exit
 fi
 
 # Restore: model, runtime, claude stub, Gateway.
