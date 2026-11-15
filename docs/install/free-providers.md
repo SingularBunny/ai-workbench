@@ -13,7 +13,7 @@ here creates accounts.
 
 The numbers come from OpenRouter's comparison of free LLM APIs (updated September 2026, checked against the
 community list cheahjs/free-llm-api-resources); providers change them without notice, so treat them as a guide
-and check the provider's own page. Groq (and the paid Cerebras and Mistral) are separate OpenClaw packages: the installer
+and check the provider's own page. Groq (and the paid Cerebras, Mistral and DeepSeek) are separate OpenClaw packages: the installer
 installs them when their key is set. Google, Hugging Face and NVIDIA are built into OpenClaw.
 
 **Cerebras, NVIDIA, Mistral and Hugging Face** were listed with free tiers in mid-2026, but in November 2026 the
@@ -21,6 +21,12 @@ first three asked for a payment method before issuing an API key, and Hugging Fa
 account with 402 "purchase pre-paid credits". Their keys still work in OpenClaw (`CEREBRAS_API_KEY`,
 `NVIDIA_API_KEY`, `MISTRAL_API_KEY`, `HF_TOKEN`; the installer installs the Cerebras and Mistral packages), but they
 are not counted as free.
+
+**DeepSeek** has no free API tier: only its chat site is free, the API is paid from a pre-paid balance, and no
+DeepSeek model was `:free` on OpenRouter in November 2026. It is cheap, though (DeepSeek V4 Flash: $0.14 per million
+input tokens and $0.28 per million output tokens in OpenClaw's catalog, 1M-token context, text only). With
+`DEEPSEEK_API_KEY` in `.env` the installer installs the `@openclaw/deepseek-provider` package; DeepSeek is not counted
+as free, so Multi-model does not spend the balance unless you add `deepseek` to `WORKBENCH_FREE_PROVIDERS`.
 
 **Which providers count as free.** By default, Google AI Studio and Groq when their key is in `.env`. To choose yourself, set
 `WORKBENCH_FREE_PROVIDERS` (provider ids, comma-separated, for example `groq,cerebras,ollama`), or `none`. A

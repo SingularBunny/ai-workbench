@@ -80,6 +80,10 @@ NVIDIA (build.nvidia.com): paid — asked for a payment method before issuing a 
 
 Hugging Face (huggingface.co/settings/tokens): paid — a new account's calls answer 402 without pre-paid credits (November 2026).
 
+### `DEEPSEEK_API_KEY`
+
+DeepSeek (platform.deepseek.com): paid from a pre-paid balance, no free tier — only the chat site is free; cheap (DeepSeek V4 Flash $0.14/$0.28 per million input/output tokens in OpenClaw's catalog, November 2026).
+
 ### `WORKBENCH_FREE_PROVIDERS`
 
 Providers counted as free in Multi-model, comma-separated, instead of those with a key above; none — no provider.

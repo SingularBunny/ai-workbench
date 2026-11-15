@@ -189,6 +189,8 @@ export const PLUGINS = {
     { id: "@openclaw/groq-provider", when: "GROQ_API_KEY" },
     { id: "@openclaw/cerebras-provider", when: "CEREBRAS_API_KEY" },
     { id: "@openclaw/mistral-provider", when: "MISTRAL_API_KEY" },
+    // DeepSeek: paid per token, with no free tier, but cheap; also a separate package.
+    { id: "@openclaw/deepseek-provider", when: "DEEPSEEK_API_KEY" },
     // Scheduled tasks that wake the model only when a check script finds work, or run a script without the model
     // (ClawHub, MIT; inert until rules are configured — docs/features/scheduled-tasks.md).
     { id: "cronhook", spec: "clawhub:cronhook",
