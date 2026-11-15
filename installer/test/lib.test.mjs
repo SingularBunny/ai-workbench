@@ -597,6 +597,15 @@ test("Dreaming model: its own model and permission, through the agent runtime", 
   assert.deepEqual(d['agents.defaults.models["anthropic/small"].agentRuntime'], { id: "claude-cli" });
 });
 
+test("PDF model: the pdf tool's model, through the agent runtime", () => {
+  const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
+  assert.ok(!("agents.defaults.pdfModel" in get({})));
+  const d = get({ WORKBENCH_DEFAULT_MODEL: "anthropic/big", WORKBENCH_DEFAULT_RUNTIME: "claude-cli", WORKBENCH_PDF_MODEL: "anthropic/small" });
+  assert.deepEqual(d["agents.defaults.pdfModel"], { primary: "anthropic/small" });
+  assert.deepEqual(d['agents.defaults.models["anthropic/small"].agentRuntime'], { id: "claude-cli" });
+  assert.ok(!('agents.defaults.models["groq/x"].agentRuntime' in get({ WORKBENCH_PDF_MODEL: "groq/x" })));
+});
+
 test("default agent name: the model family, not the id", () => {
   const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
   assert.equal(get({ WORKBENCH_DEFAULT_MODEL: "anthropic/claude-opus-5-5" })["agents.entries.main.identity.name"], "Claude");

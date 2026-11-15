@@ -49,6 +49,17 @@ export function settings(ctx) {
     }
   }
 
+  // PDF model of the pdf tool (docs/features/document-preview.md): it reads PDFs, scans included, for agents whose own
+  // model cannot. With WORKBENCH_DEFAULT_RUNTIME it runs on the same runtime: on Claude CLI the fork reads the PDF in
+  // one isolated CLI turn (Claude by subscription, no API key); without the setting the pdf tool stays as OpenClaw has it.
+  const pdfModel = ctx.env.WORKBENCH_PDF_MODEL;
+  if (pdfModel) {
+    out.push(["agents.defaults.pdfModel", { primary: pdfModel }]);
+    if (ctx.env.WORKBENCH_DEFAULT_RUNTIME && pdfModel !== model && pdfModel !== dreaming) {
+      out.push([`agents.defaults.models[${JSON.stringify(pdfModel)}].agentRuntime`, { id: ctx.env.WORKBENCH_DEFAULT_RUNTIME }]);
+    }
+  }
+
   // Multi-model (aiwb-compare, docs/features/multi-model.md) calls the models chosen on its page by name: OpenClaw
   // lets a plugin pick the model only with this opt-in (docs plugins/sdk-runtime/models.md).
   out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);

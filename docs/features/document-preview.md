@@ -47,3 +47,18 @@ selected, copied and found in any PDF viewer. The `aiwb-office` skill `searchabl
 
 To run it yourself: `node <aiwb-plugins>/office/skills/searchable-pdf/searchable-pdf.mjs scan.pdf [--out copy.pdf]
 [--ocr-langs eng+rus]`.
+
+## Reading a PDF or a scan with another model
+
+An agent whose own model cannot read a PDF, a text-only model or a scan without a text layer, can hand it to
+the PDF model with OpenClaw's `pdf` tool ([OpenClaw docs](https://docs.openclaw.ai/tools/pdf)). Pages with text go
+as text; a page with almost no text (a scan) is rendered to an image for the model to look at. Chats on Claude CLI do
+not need it: Claude reads PDFs itself.
+
+Set the model in `.env`: `WORKBENCH_PDF_MODEL=anthropic/claude-haiku-5-5`. With `WORKBENCH_DEFAULT_RUNTIME=claude-cli`
+it runs by Claude subscription: the fork reads the PDF in one Claude CLI turn without tools, so it needs no API key
+and uses the subscription's limits. Without the setting the `pdf` tool stays off unless OpenClaw finds a model with
+image input and a key of its own.
+
+The agent cannot pick another model for the tool: the installer sets `OPENCLAW_MEDIA_MODEL_OVERRIDE=0`, so the
+document goes to the model you set and to no other ([OpenClaw fork](../openclaw-fork.md)).
