@@ -1096,7 +1096,12 @@ test("profile ENV: non-secret WORKBENCH_* values only; written into .env in plac
     assert.ok(profileEnv({ [bad]: "x" }).error, bad);
   }
   assert.equal(setEnvLines("A=1\nWORKBENCH_X=old\n", { WORKBENCH_X: "new", WORKBENCH_Y: "y" }), "A=1\nWORKBENCH_X=new\nWORKBENCH_Y=y\n");
-  assert.equal(setEnvLines("A=1", { WORKBENCH_Y: "$1 y" }), "A=1\nWORKBENCH_Y=$1 y\n");
+  // Values the shell would split or expand are quoted: `set -a; . .env` must not fail on a folder with a space.
+  assert.equal(setEnvLines("A=1", { WORKBENCH_Y: "$1 y" }), "A=1\nWORKBENCH_Y='$1 y'\n");
+  assert.equal(setEnvLines("WORKBENCH_K='~/a b'\n", { WORKBENCH_K: "~/a b" }), "WORKBENCH_K='~/a b'\n");
+  assert.equal(setEnvLines("", { WORKBENCH_K: "~/x:/y,z" }), "WORKBENCH_K=~/x:/y,z\n");
+  const { unquoteEnv } = await import("../lib.mjs");
+  for (const q of ["'~/a b'", '"~/a b"', "~/a b"]) assert.equal(unquoteEnv(q), "~/a b");
   assert.deepEqual(mergeProfile({ REPOS: [], PLUGINS: { own: [], marketplaces: {}, bases: [], runtime: [] }, MCP: [], settings: () => [] },
     { ENV: { WORKBENCH_FORK_PRESETS: "worker-limits" } }).ENV, { WORKBENCH_FORK_PRESETS: "worker-limits" });
 });

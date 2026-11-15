@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -281,7 +281,7 @@ function loadEnvFile(file) {
   if (!existsSync(file)) return env;
   for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
     const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
-    if (m) env[m[1]] = m[2];
+    if (m) env[m[1]] = unquoteEnv(m[2]);
   }
   return env;
 }

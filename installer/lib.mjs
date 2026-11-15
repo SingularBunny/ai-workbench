@@ -120,11 +120,23 @@ export function profileEnv(env = {}) {
   return { values };
 }
 
+/** A .env value as written: quoted when `set -a; . .env` would split or expand it (dotenv strips the quotes). */
+export function envValue(v) {
+  if (/^[\w@%+=:,./~-]*$/.test(v)) return v;
+  return v.includes("'") ? `"${v}"` : `'${v}'`;
+}
+
+/** A .env value as read: surrounding quotes removed, as dotenv does. */
+export function unquoteEnv(v) {
+  const m = v.trim().match(/^(['"`])([\s\S]*)\1$/);
+  return m ? m[2] : v.trim();
+}
+
 /** .env text with the given keys set: an existing line is replaced in place, a new key is appended. */
 export function setEnvLines(envText, values) {
   let text = envText;
   for (const [k, v] of Object.entries(values)) {
-    const line = `${k}=${v}`;
+    const line = `${k}=${envValue(v)}`;
     const re = new RegExp(`^${k}=.*$`, "m");
     text = re.test(text) ? text.replace(re, () => line) : `${text}${text && !text.endsWith("\n") ? "\n" : ""}${line}\n`;
   }
