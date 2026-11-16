@@ -206,10 +206,12 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   bash /opt/ai-workbench/tools/container_check_chats.sh
   bash /opt/ai-workbench/tools/container_check_catalog.sh
   bash /opt/ai-workbench/tools/container_check_claude_cli.sh
-  bash /opt/ai-workbench/tools/container_check_junie.sh
   bash /opt/ai-workbench/tools/container_check_projects.sh
   bash /opt/ai-workbench/tools/container_check_office.sh
   bash /opt/ai-workbench/tools/container_check_plan.sh
+  # After projects: its Gateway restarts would let the projects plugin adopt the made-up project chats into main
+  # before the project agents exist.
+  bash /opt/ai-workbench/tools/container_check_junie.sh
   [[ -n \"$LIVE_MODEL\" ]] && python3 /opt/ai-workbench/tools/live_model_check.py \"$LIVE_JUDGE\"
   if [[ -n \"$PROFILE_DIR\" ]]; then
     echo ==== tasks; node=\$(find ~/.openclaw -maxdepth 5 -type f -path \"*/bin/node\" | head -1)

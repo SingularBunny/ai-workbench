@@ -29,8 +29,6 @@ by = {s["threadId"]: s for s in ss}
 def ok(name, cond): print(f"{name}={0 if cond else 1}")
 print("PROJECTS_ROWS", len(ss), sorted({s.get("customGroup") for s in ss}))
 ok("PROJECTS_CATALOG", cat.get("id") == "projects")
-ok("PROJECTS_TREE_GARDEN", by.get(ids["base"], {}).get("customGroup") == "Garden")
-ok("PROJECTS_TREE_SAD", by.get(ids["orchard"], {}).get("customGroup") == "Сад")
 agent_rows = [s for s in ss if s.get("sessionKey", "").startswith("agent:sad:")]
 ok("PROJECTS_AGENT_SESSION_ROW", bool(agent_rows) and all(s.get("customGroup") == "Сад" for s in agent_rows))
 for s in ss: print("PROJECTS_ROW", s.get("customGroup"), "|", s.get("name"), "|", s.get("sessionKey", "-")[:50])
@@ -68,12 +66,31 @@ adopt_run() {
 for i in 1 2 3 4 5 6; do "$node" /opt/ai-workbench/migrate/claude-desktop/claude-code-catalog.mjs > /tmp/projects-adopt.log 2>&1; code=$?
   grep -qE 'adopted [0-9]+, errors 0' /tmp/projects-adopt.log && break; sleep 15; done; echo "PROJECTS_ADOPT_EXIT=$code"
 grep -E 'Adoption by agents|✗' /tmp/projects-adopt.log
-list
+# The plugin moves an already imported chat to its folder's agent on its own pass: wait for the Сад chat.
+orchard_moved() { python3 -c '
+import hashlib, json
+t = json.load(open("/tmp/catalog-ids.json"))["orchard"]
+d = hashlib.sha256(json.dumps(["claude", "gateway:local", None, t], separators=(",", ":")).encode()).hexdigest()
+ss = json.load(open("/tmp/projects-list.json"))["catalogs"][0]["hosts"][0]["sessions"]
+raise SystemExit(0 if any(s.get("sessionKey", "").startswith("agent:sad:") and s["sessionKey"].endswith(d) for s in ss) else 1)' 2>/dev/null; }
+for i in $(seq 1 30); do list; orchard_moved && break; sleep 3; done
 python3 - <<'PY2'
 import json
 ids = json.load(open("/tmp/catalog-ids.json"))
 ss = json.load(open("/tmp/projects-list.json"))["catalogs"][0]["hosts"][0]["sessions"]
 def ok(name, cond): print(f"{name}={0 if cond else 1}")
+# The tree after adoption: a Gateway restart before this check may already have imported the chats under main;
+# the plugin then moves a project folder's chat to its agent. An imported chat is listed by its session, whose
+# key is a hash of the Claude thread (buildSessionCatalogImportKey), so a thread finds its row either way.
+import hashlib
+by = {s["threadId"]: s for s in ss}
+for t in ids.values():
+    digest = hashlib.sha256(json.dumps(["claude", "gateway:local", None, t], separators=(",", ":")).encode()).hexdigest()
+    # Right after adoption the old copy under main may still be listed: the adopted one is the newest.
+    rows = [s for s in ss if s.get("sessionKey", "").endswith(f":catalog-import:{digest}")]
+    if rows: by[t] = max(rows, key=lambda s: s.get("updatedAt") or 0)
+ok("PROJECTS_TREE_GARDEN", by.get(ids["base"], {}).get("customGroup") == "Garden")
+ok("PROJECTS_TREE_SAD", by.get(ids["orchard"], {}).get("customGroup") == "Сад")
 orchard = [s for s in ss if s["threadId"] == ids["orchard"]]
 adopted = [s for s in ss if "catalog-import" in s.get("sessionKey", "") and s["threadId"].startswith("s:")]
 ok("PROJECTS_ADOPTED_PROJECT_AGENT", any(s["sessionKey"].startswith("agent:sad:") and s.get("customGroup") == "Сад" for s in adopted))

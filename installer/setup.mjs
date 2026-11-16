@@ -692,6 +692,12 @@ async function main() {
       if (refreshed.code !== 0) console.log(`  model catalog of ${provider} not refreshed: ${refreshed.out.trim().split("\n").slice(-1)[0] || `exit code ${refreshed.code}`}`);
     }
     let r = step.exec ? run(step.exec, step.argv, { capture: !!step.expect }) : openclaw(step.argv, { capture: step.kind === "config" || step.kind === "config-batch" || !!step.tolerant });
+    // A runtime plugin comes from ClawHub, which at times does not answer in time: two more tries, 15 s apart.
+    for (let attempt = 2; step.kind === "runtime" && r.code !== 0 && attempt <= 3; attempt++) {
+      console.log(`  retrying ${step.id} in 15 s (attempt ${attempt} of 3)`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 15000);
+      r = openclaw(step.argv, { capture: false });
+    }
     // `config set` rejects a model its offline check cannot find; models of npm-installed providers (Groq) fail it even
     // after a catalog refresh, while `models set` saves them with a warning. So such a default model goes through it.
     if (r.code !== 0 && modelProvidersToRefresh(step).length && /Unknown model/.test(r.out)) {
