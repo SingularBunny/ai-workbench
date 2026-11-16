@@ -35,9 +35,36 @@ export PATH="$prefix/bin:$PATH"
 # cleaned, and a package that is no longer there is taken from these copies by its sha256 (rollback).
 if [[ -f "$prefix/.env" ]]; then
   while IFS='=' read -r k v; do
-    case "$k" in WORKBENCH_OPENCLAW_PACKAGE|WORKBENCH_OPENCLAW_PACKAGE_SHA256|WORKBENCH_BACKUP) [[ -n "${!k:-}" ]] || export "$k=$v" ;; esac
+    case "$k" in WORKBENCH_OPENCLAW_PACKAGE|WORKBENCH_OPENCLAW_PACKAGE_SHA256|WORKBENCH_BACKUP|WORKBENCH_PROXY_URL|WORKBENCH_PROXY_HOSTS) [[ -n "${!k:-}" ]] || export "$k=$v" ;; esac
   done < "$prefix/.env"
 fi
+# Downloads of this script (install-cli.sh, an https:// fork package) follow the optional network proxy of .env:
+# with WORKBENCH_PROXY_URL set, a host matching WORKBENCH_PROXY_HOSTS (comma-separated suffixes; unset, `*` or
+# `all` — every host) goes through it, everything else direct. No proxy URL — everything direct, as before.
+# WORKBENCH_PROXY_ROUTES is not read here. install-cli.sh itself downloads Node and npm packages and follows
+# HTTPS_PROXY from the environment.
+proxy_for() {
+  local url="${WORKBENCH_PROXY_URL:-}" hosts="${WORKBENCH_PROXY_HOSTS:-}" host="${1,,}" h
+  [[ -n "$url" ]] || return 0
+  hosts="${hosts// /}"; hosts="${hosts,,}"
+  if [[ -z "$hosts" || "$hosts" == "*" || "$hosts" == "all" ]]; then echo "$url"; return 0; fi
+  IFS=',' read -ra list <<< "$hosts"
+  for h in "${list[@]}"; do
+    h="${h#.}"; [[ -n "$h" ]] || continue
+    [[ "$host" == "$h" || "$host" == *".$h" ]] && { echo "$url"; return 0; }
+  done
+}
+fetch() {
+  local src="$1" out="$2" host proxy
+  host="${src#https://}"; host="${host%%/*}"; host="${host%%:*}"
+  proxy="$(proxy_for "$host")"
+  if [[ -n "$proxy" ]]; then
+    echo "Downloading from $host through the proxy in WORKBENCH_PROXY_URL…"
+    curl -fsSL --proto '=https' --tlsv1.2 --proxy "$proxy" "$src" -o "$out"
+  else
+    curl -fsSL --proto '=https' --tlsv1.2 "$src" -o "$out"
+  fi
+}
 # OpenClaw agents started by an IDE (`openclaw acp`, JetBrains AI Assistant) keep running the files of the
 # package they started from: after OpenClaw is replaced they must be restarted, the installer cannot do it.
 ide_agents() { ps -eo pid=,args= 2>/dev/null | awk '/openclaw/ { for (i = 3; i <= NF; i++) if ($i == "acp") { print $1; break } }' | paste -sd, -; }
@@ -108,7 +135,7 @@ if (( ! uninstall )) && [[ -n "${WORKBENCH_OPENCLAW_PACKAGE:-}" ]]; then
   else
     ptmp="$(mktemp -d)"
     if [[ "$WORKBENCH_OPENCLAW_PACKAGE" =~ ^https:// ]]; then
-      curl -fsSL --proto '=https' --tlsv1.2 "$WORKBENCH_OPENCLAW_PACKAGE" -o "$ptmp/openclaw.tgz"
+      fetch "$WORKBENCH_OPENCLAW_PACKAGE" "$ptmp/openclaw.tgz"
     elif [[ -f "$WORKBENCH_OPENCLAW_PACKAGE" ]]; then
       cp "$WORKBENCH_OPENCLAW_PACKAGE" "$ptmp/openclaw.tgz"
     else
@@ -123,7 +150,7 @@ if (( ! uninstall )) && [[ -n "${WORKBENCH_OPENCLAW_PACKAGE:-}" ]]; then
     echo "Installing OpenClaw from the fork (sha256 $got) with the official install-cli.sh…"
     backup_before_replace
     ide_agents_note "and will keep the old OpenClaw files"
-    curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install-cli.sh -o "$ptmp/install-cli.sh"
+    fetch https://openclaw.ai/install-cli.sh "$ptmp/install-cli.sh"
     echo "install-cli.sh sha256: $( (sha256sum "$ptmp/install-cli.sh" 2>/dev/null || shasum -a 256 "$ptmp/install-cli.sh") | cut -d' ' -f1)"
     bash "$ptmp/install-cli.sh" --prefix "$prefix" --version "$ptmp/openclaw.tgz" --no-onboard
     mkdir -p "$(dirname "$mark")" && echo "$want" > "$mark"
@@ -171,7 +198,7 @@ else
   backup_before_replace
   ide_agents_note "and will keep the old OpenClaw files"
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-  curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install-cli.sh -o "$tmp/install-cli.sh"
+  fetch https://openclaw.ai/install-cli.sh "$tmp/install-cli.sh"
   # Download to a file, not `| bash`: an interrupted download will not run half a script.
   echo "install-cli.sh sha256: $( (sha256sum "$tmp/install-cli.sh" 2>/dev/null || shasum -a 256 "$tmp/install-cli.sh") | cut -d' ' -f1)"
   bash "$tmp/install-cli.sh" --prefix "$prefix" --version "$version" --no-onboard
