@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
-import { acpLaunch, skillCollisions, skillLinkSteps, ACP_AGENT, acpEntry, applyAcp, buildPlan, checkPluginDeps, formatPlan, checksumFor, ensureGatewayToken, configBefore, hookSteps, ideSteps, isGitUrl, mainSteps, makeWhich, marketplaceSteps, profileSource, profileTarget, mcpSteps, mergeManifest, staleVersions, touchedBy, uninstallPlan, mergeProfile, parseDependencies, projectSteps, repoSteps, sameRepo, winQuote } from "../lib.mjs";
+import { acpLaunch, skillCollisions, skillLinkSteps, ACP_AGENT, acpEntry, applyAcp, buildPlan, checkPluginDeps, localPluginPackage, formatPlan, checksumFor, ensureGatewayToken, configBefore, hookSteps, ideSteps, isGitUrl, mainSteps, makeWhich, marketplaceSteps, profileSource, profileTarget, mcpSteps, mergeManifest, staleVersions, touchedBy, uninstallPlan, mergeProfile, parseDependencies, projectSteps, repoSteps, sameRepo, winQuote } from "../lib.mjs";
 import * as REAL from "../../openclaw/workbench.config.mjs";
 
 const DEPS = `# header
@@ -136,6 +136,40 @@ test("acpx is installed only when a VM is configured", () => {
   const withVm = buildPlan({ settings: [], plugins: PLUGINS, pluginsRoot: root, projectRoot: "/repo", env: { WORKBENCH_VM_SSH: "u@vm" }, ownState, marketplaceDir: local });
   assert.equal(without.some((s) => s.id === "@openclaw/acpx"), false);
   assert.equal(withVm.some((s) => s.id === "@openclaw/acpx"), true);
+});
+
+test("acpx from a local package: npm-pack install with capability consent, only with a valid sha256", () => {
+  const plugins = { ...PLUGINS, runtime: [{ id: "@openclaw/acpx", when: "WORKBENCH_VM_SSH", package: "WORKBENCH_ACPX_PACKAGE" }] };
+  const plan = (env) => buildPlan({ settings: [], plugins, pluginsRoot: root, projectRoot: "/repo", env: { WORKBENCH_VM_SSH: "u@vm", ...env }, ownState, marketplaceDir: local })
+    .find((s) => s.id === "@openclaw/acpx");
+  const sha = "a".repeat(64);
+  // Not set: the registry copy, as before.
+  assert.deepEqual(plan({}).argv, ["plugins", "install", "@openclaw/acpx", "--force"]);
+  assert.equal(plan({}).package, undefined);
+  const step = plan({ WORKBENCH_ACPX_PACKAGE: "/b/openclaw-acpx-1-abc.tgz", WORKBENCH_ACPX_PACKAGE_SHA256: sha.toUpperCase() });
+  assert.deepEqual(step.argv, ["plugins", "install", "npm-pack:/b/openclaw-acpx-1-abc.tgz", "--force", "--accept-capabilities"]);
+  assert.deepEqual(step.package, { env: "WORKBENCH_ACPX_PACKAGE", file: "/b/openclaw-acpx-1-abc.tgz", sha256: sha });
+  assert.equal(step.error, undefined);
+  // The sha256 is required: without it the step fails instead of installing an unchecked file.
+  const bad = plan({ WORKBENCH_ACPX_PACKAGE: "/b/x.tgz", WORKBENCH_ACPX_PACKAGE_SHA256: "nope" });
+  assert.match(bad.error, /WORKBENCH_ACPX_PACKAGE_SHA256 is missing/);
+  assert.deepEqual(bad.warn, [bad.error]);
+  // The package alone does not pull acpx in: it only changes where it comes from.
+  const none = buildPlan({ settings: [], plugins, pluginsRoot: root, projectRoot: "/repo", env: { WORKBENCH_ACPX_PACKAGE: "/b/x.tgz", WORKBENCH_ACPX_PACKAGE_SHA256: sha }, ownState, marketplaceDir: local });
+  assert.equal(none.some((s) => s.id === "@openclaw/acpx"), false);
+});
+
+test("acpx local package: checked by sha256, kept in the state folder, the kept copy when the file is gone", () => {
+  const pkg = { env: "WORKBENCH_ACPX_PACKAGE", file: "~/b/acpx.tgz", sha256: "1".repeat(64) };
+  const kept = "/home/u/.openclaw/workbench/acpx-package.tgz";
+  const io = (files) => ({ home: "/home/u", exists: (f) => f in files, sha256: (f) => files[f] });
+  assert.deepEqual(localPluginPackage(pkg, kept, io({ "/home/u/b/acpx.tgz": "1".repeat(64) })), { from: "/home/u/b/acpx.tgz", copy: true });
+  assert.match(localPluginPackage(pkg, kept, io({ "/home/u/b/acpx.tgz": "2".repeat(64) })).error, /sha256 2+, expected 1+ — not installing/);
+  // The build folder was cleaned: the kept copy with the same sha256 is installed again.
+  assert.deepEqual(localPluginPackage(pkg, kept, io({ [kept]: "1".repeat(64) })), { from: kept, copy: false, fallback: true });
+  assert.match(localPluginPackage(pkg, kept, io({ [kept]: "3".repeat(64) })).error, /no file \/home\/u\/b\/acpx.tgz/);
+  // .env already points at the kept copy: nothing to copy.
+  assert.deepEqual(localPluginPackage({ ...pkg, file: kept }, kept, io({ [kept]: "1".repeat(64) })), { from: kept, copy: false });
 });
 
 test("marketplace: always its own clone; existing copy: git pull, none: clone, and before base plugins", () => {

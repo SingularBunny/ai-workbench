@@ -10,11 +10,24 @@
 # types, but without the shared .d.ts declarations — they take ~95% of tsdown time and run single-threaded.
 # OpenClaw and JS plugins do not need them to run. --release — full build, like a release (~30 minutes).
 #
-#   tools/openclaw-fork-build.sh [--release] <fork folder> [<where to put the .tgz>]
+# The same run also packs the ACPX plugin (@openclaw/acpx, extensions/acpx) from the same commit: it is a separate
+# runtime plugin, not part of the core package, so the fork's ACPX changes reach the workbench only through it.
+# It is packed as the plugin npm release packs it (.github/workflows/plugin-npm-release.yml:
+# scripts/plugin-npm-publish.sh --pack) and lands next to the core package as openclaw-acpx-<version>-<commit>.tgz.
+# --acpx-only — pack only ACPX (a minute; the core package of that commit is already built).
+#
+#   tools/openclaw-fork-build.sh [--release] [--acpx-only] <fork folder> [<where to put the .tgz>]
 # The fork folder can also come from WORKBENCH_OPENCLAW_SRC.
 set -euo pipefail
-build=build:ci-artifacts
-[[ "${1:-}" == --release ]] && { build=build; shift; }
+build=build:ci-artifacts core=1
+while [[ "${1:-}" == --* ]]; do
+  case "$1" in
+    --release) build=build ;;
+    --acpx-only) core=0 ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
 src=$(realpath "${1:-${WORKBENCH_OPENCLAW_SRC:?pass the OpenClaw fork checkout as the first argument or set WORKBENCH_OPENCLAW_SRC}}")
 out=$(realpath -m "${2:-$(dirname "$(realpath "$0")")/../dist/openclaw-fork}")
 image=node:24.22.1-bookworm
@@ -25,7 +38,7 @@ rev=$(git -C "$src" rev-parse --short=12 HEAD)
 commit=$(git -C "$src" rev-parse HEAD)
 branch=$(git -C "$src" rev-parse --abbrev-ref HEAD)
 [[ -z "$(git -C "$src" status --porcelain --untracked-files=no)" ]] || echo "⚠ the fork has uncommitted changes — they will not get into the package" >&2
-echo "Fork: $src ($branch, $rev) → $out; build: pnpm $build"
+echo "Fork: $src ($branch, $rev) → $out; build: $( ((core)) && echo "pnpm $build + " )ACPX"
 # tar.umask=0022: by default git archive leaves files group-writable, and OpenClaw rejects
 # such package folders (browser extension install: "Refusing group/world-writable path").
 # A proxy from the environment (HTTPS_PROXY/HTTP_PROXY) reaches the build: the container then shares the host
@@ -39,20 +52,35 @@ for v in OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS OPENCLAW_DOCKER_PACKAGE_INVENTORY_
   [[ -n "${!v:-}" ]] && net+=(-e "$v")
 done
 git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i "${net[@]}" \
-  -e BUILD="$build" -e GIT_COMMIT="$commit" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e HOME=/tmp/home -e OPENCLAW_CONTROL_UI_RELEASE_BUILD=1 -e CI=1 \
+  -e BUILD="$build" -e CORE="$core" -e REV="$rev" -e GIT_COMMIT="$commit" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e HOME=/tmp/home -e OPENCLAW_CONTROL_UI_RELEASE_BUILD=1 -e CI=1 \
   -v aiwb-openclaw-pnpm:/pnpm-store -v aiwb-openclaw-npm:/tmp/home/.npm -v "$out":/out "$image" bash -euo pipefail -c '
     mkdir -p /tmp/home /tmp/b /tmp/bin && tar -x -C /tmp/b && cd /tmp/b
     corepack enable --install-directory /tmp/bin && export PATH=/tmp/bin:$PATH
     pnpm config set store-dir /pnpm-store
     pnpm install --frozen-lockfile
+    # ACPX first: it needs only the install (the plugin release packs it from a fresh checkout too), so a
+    # broken core build does not hide it. The package-local runtime build and npm lock check run inside; the
+    # runtime build output is removed afterwards, so the core build starts from the archived tree.
+    mkdir -p /tmp/acpx
+    OPENCLAW_PLUGIN_NPM_PACK_OUTPUT_DIR=/tmp/acpx bash scripts/plugin-npm-publish.sh --pack extensions/acpx >/dev/null
+    rm -rf extensions/acpx/dist
+    f=$(ls /tmp/acpx/*.tgz); dst="/out/$(basename "$f" .tgz)-$REV.tgz"
+    cp "$f" "$dst" && chown "$HOST_UID:$HOST_GID" "$dst"
+    [[ "$CORE" == 1 ]] || exit 0
     pnpm "$BUILD"
     [[ -f dist/control-ui/index.html ]] || pnpm ui:build
     test -f dist/control-ui/index.html
     # Self-contained package: the root npm pack does not resolve @openclaw/ai from the workspace
     # (prepack refuses; in a release OpenClaw publishes it separately) — OpenClaw builds it this way too.
     node scripts/package-openclaw-for-docker.mjs --allow-unreleased-changelog --skip-build --output-dir /tmp/pack
-    f=$(ls /tmp/pack/*.tgz); dst="/out/$(basename "$f" .tgz)-'"$rev"'.tgz"
+    f=$(ls /tmp/pack/*.tgz); dst="/out/$(basename "$f" .tgz)-$REV.tgz"
     cp "$f" "$dst" && chown "$HOST_UID:$HOST_GID" "$dst"'
-pkg=$(ls -t "$out"/*-"$rev".tgz | head -1)
-echo "Package: $pkg"
-echo "sha256: $(sha256sum "$pkg" | cut -d' ' -f1)"
+# openclaw-<version>-<commit>.tgz is the core, openclaw-acpx-<version>-<commit>.tgz the ACPX plugin.
+if ((core)); then
+  pkg=$(ls -t "$out"/openclaw-[0-9]*-"$rev".tgz | head -1)
+  echo "Package: $pkg"
+  echo "sha256: $(sha256sum "$pkg" | cut -d' ' -f1)"
+fi
+acpx=$(ls -t "$out"/openclaw-acpx-*-"$rev".tgz | head -1)
+echo "ACPX package: $acpx"
+echo "ACPX sha256: $(sha256sum "$acpx" | cut -d' ' -f1)"

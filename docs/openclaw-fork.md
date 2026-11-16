@@ -11,7 +11,8 @@ version; the same package is not reinstalled. To build the fork package, run
 land in `dist/openclaw-fork/`). The default build takes about 5 minutes: the same JavaScript and Control UI
 as a release, without the shared type declarations (`.d.ts`) that only plugin authors need for type
 checking; this is enough to install and run. `--release` builds exactly like an OpenClaw release (~30
-minutes). To check it, run `tools/validate_in_docker.sh --openclaw-package <.tgz>`. The installer does not
+minutes). The same run builds the ACPX plugin package ([ACPX from the fork](#acpx-from-the-fork)). To check it,
+run `tools/validate_in_docker.sh --openclaw-package <.tgz>`. The installer does not
 modify the fork's files (copies left from earlier patches are removed).
 
 The installer keeps the installed package and the one before it in `~/.openclaw/workbench/`
@@ -27,6 +28,38 @@ use its `https://` address. Uninstalling ai-workbench leaves these copies and th
 with the official OpenClaw of the pinned version (`--yes` replaces it without asking; without a terminal and
 without `--yes` the fork stays). The kept fork copies stay, so setting the variables again returns the fork.
 Uninstalling ai-workbench does not touch OpenClaw and says when it stays installed from the fork.
+
+## ACPX from the fork
+
+The ACPX plugin (`@openclaw/acpx`: ACP agents such as Claude CLI on a VM or [Junie](integrations/junie.md)) is
+not part of the OpenClaw package: the installer installs it separately, from npm, whenever an ACP agent is
+configured. Changes the fork makes in `extensions/acpx` (for example the Gateway methods `acpx.chat.handoff.*`
+and `acpx.chat.models.*`) reach the workbench only through an ACPX package built from the fork; with the npm
+copy the Gateway answers these methods with "unknown method".
+
+`tools/openclaw-fork-build.sh` packs ACPX in the same run and from the same commit, the way the OpenClaw plugin
+release packs it (`scripts/plugin-npm-publish.sh --pack`), and puts it next to the OpenClaw package:
+`dist/openclaw-fork/openclaw-acpx-<version>-<commit>.tgz`, with its sha256 printed at the end.
+`--acpx-only` packs only ACPX (about a minute), when the OpenClaw package of that commit is already built.
+Point the installer at it in `~/.openclaw/.env`:
+
+```bash
+WORKBENCH_ACPX_PACKAGE=/path/to/dist/openclaw-fork/openclaw-acpx-<version>-<commit>.tgz
+WORKBENCH_ACPX_PACKAGE_SHA256=<sha256>
+```
+
+The installer checks the sha256 (on mismatch ACPX is not touched), keeps the package as
+`~/.openclaw/workbench/acpx-package.tgz` and installs it from there with
+`openclaw plugins install npm-pack:<file> --force --accept-capabilities`. This replaces the npm copy in place:
+OpenClaw installs the package into a new generation of the same plugin project, records the archive as its
+source, and runs it from the next Gateway start. A local copy needs capability consent, which the installer
+gives, as it does for its own plugins. If the file named in `.env` is gone, the kept copy with the same sha256
+is installed again. Build ACPX from the same commit as the OpenClaw package: the plugin is built against that
+OpenClaw's plugin SDK. Remove both lines and re-run the installer to go back to the npm copy.
+
+To check both packages in Docker:
+`tools/validate_in_docker.sh --openclaw-package <openclaw .tgz> --acpx-package <openclaw-acpx .tgz>`; with
+`--acpx-package` the check also calls `acpx.chat.handoff.get` on the Gateway.
 Values hardcoded in OpenClaw are read by the fork from environment variables, which are set by
 the `env.vars` setting (`openclaw config set`, Gateway method `config.patch`); without them it
 behaves like OpenClaw:

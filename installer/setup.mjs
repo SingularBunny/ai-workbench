@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, localPluginPackage, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -683,6 +683,19 @@ async function main() {
     // Marketplace is not at its pinned commit: skip its base plugins, otherwise a different version is silently installed.
     if (step.kind === "base" && brokenMarkets.has(step.market)) {
       failed++; console.error(`✗ base ${step.id}: marketplace ${step.market} is not at the pinned commit — not installing`); continue;
+    }
+    // A runtime plugin from a local package (WORKBENCH_ACPX_PACKAGE): checked by sha256, kept in the state folder and
+    // installed from there; on any problem the installed copy stays as it is.
+    if (step.package) {
+      if (step.error) { failed++; console.error(`✗ runtime ${step.id}: ${step.error}`); continue; }
+      const kept = path.join(stateDir, "workbench", `${step.id.split("/").at(-1)}-package.tgz`);
+      const sha = (f) => createHash("sha256").update(readFileSync(f)).digest("hex");
+      const pkg = localPluginPackage(step.package, kept, { home, exists: existsSync, sha256: sha });
+      if (pkg.error) { failed++; console.error(`✗ runtime ${step.id}: ${pkg.error}`); continue; }
+      if (pkg.fallback) console.log(`  ${step.package.file} not found; using the kept copy ${kept}`);
+      try { if (pkg.copy) { mkdirSync(path.dirname(kept), { recursive: true }); copyFileSync(pkg.from, kept); } }
+      catch (e) { failed++; console.error(`✗ runtime ${step.id}: keeping a copy in ${kept}: ${e.message}`); continue; }
+      step.argv = ["plugins", "install", `npm-pack:${kept}`, ...step.argv.slice(3)];
     }
     if (step.exec === "git" && step.argv[0] === "clone") mkdirSync(path.dirname(step.argv.at(-1)), { recursive: true });
     // OpenClaw checks a model reference against its model catalog on write; a provider discovered at run time (Groq,

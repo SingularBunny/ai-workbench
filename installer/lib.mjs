@@ -172,6 +172,17 @@ export function buildPlan({ settings, plugins, pluginsRoot, projectRoot, profile
   for (const r of plugins.runtime) {
     // when: a .env key, or several keys of which any one is enough.
     if (r.when && ![].concat(r.when).some((k) => env[k])) continue;
+    // package: a .env key naming a local npm-pack .tgz of the plugin (built from the fork), with its sha256 in
+    // <key>_SHA256; set, it replaces the registry copy. A local copy needs capability consent, as own plugins do.
+    const local = r.package && String(env[r.package] || "").trim();
+    if (local) {
+      const sha256 = String(env[`${r.package}_SHA256`] || "").trim().toLowerCase();
+      const error = /^[0-9a-f]{64}$/.test(sha256) ? null : `${r.package} is set, but ${r.package}_SHA256 is missing or not a sha256`;
+      steps.push({ kind: "runtime", id: r.id, note: `from ${local}`, package: { env: r.package, file: local, sha256 },
+        ...(error ? { error, warn: [error] } : {}),
+        argv: ["plugins", "install", `npm-pack:${local}`, "--force", "--accept-capabilities"] });
+      continue;
+    }
     // spec: where it comes from when that is not its id (a ClawHub plugin, `clawhub:<name>`).
     steps.push({ kind: "runtime", id: r.id, argv: ["plugins", "install", r.spec || r.id, "--force"], ...(r.optional ? { optional: r.optional } : {}) });
   }
@@ -194,6 +205,23 @@ export function buildPlan({ settings, plugins, pluginsRoot, projectRoot, profile
   }
   steps.push({ kind: "check", id: "config validate", argv: ["config", "validate"] });
   return steps;
+}
+
+/**
+ * The archive a runtime plugin step with `package` installs from (buildPlan). The file named in .env is checked
+ * against its sha256 and copied to `kept` (<state>/workbench/<plugin>-package.tgz), which is what gets installed:
+ * the install record keeps pointing at a file that outlives the build folder. A file that is gone falls back to
+ * the kept copy with the same sha256. Returns { from, copy } (copy: whether to copy `from` to `kept` first) or { error }.
+ */
+export function localPluginPackage(pkg, kept, { home, exists, sha256 }) {
+  const file = pkg.file.replace(/^~(?=$|[\\/])/, home);
+  if (exists(file)) {
+    const got = sha256(file);
+    if (got !== pkg.sha256) return { error: `${pkg.env}: sha256 ${got}, expected ${pkg.sha256} — not installing` };
+    return { from: file, copy: path.resolve(file) !== path.resolve(kept) };
+  }
+  if (exists(kept) && sha256(kept) === pkg.sha256) return { from: kept, copy: false, fallback: true };
+  return { error: `${pkg.env}: no file ${file} (and no kept copy with sha256 ${pkg.sha256})` };
 }
 
 /**

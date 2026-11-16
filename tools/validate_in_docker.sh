@@ -23,6 +23,8 @@
 #     --profile-git <dir> — the profile is installed from git: the repository folder is mounted
 #                    read-only and cloned over file:// into /home/tester/plugins/profile in the container
 #     --openclaw-package <.tgz> — OpenClaw from the fork (tools/openclaw-fork-build.sh) over the pinned version
+#     --acpx-package <.tgz> — the ACPX plugin from the fork (openclaw-acpx-*.tgz of the same build) instead of npm;
+#                    then the Gateway must answer the fork's acpx.chat.handoff.get (tools/container_check_acpx.sh)
 #     --reinstall  — after the check: reinstall, uninstall by manifest, install again
 #                    after uninstall (tools/container_check_reinstall.sh); then an install with the
 #                    plugin layout before the rename and the current one over it (container_check_migration.sh)
@@ -38,7 +40,7 @@
 #                    makes it reachable from the container, which gets it as HTTPS_PROXY for the check's duration
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-keep=0; clean=0; matrix=0; distro=debian; public=0; reinstall=0; profile_git=""; oc_package=""
+keep=0; clean=0; matrix=0; distro=debian; public=0; reinstall=0; profile_git=""; oc_package=""; acpx_package=""
 live_model=""; live_judge="google/gemma-4-31b-it:free"; live_proxy=""
 profile="${WORKBENCH_PROFILE:-}"
 args=("$@")
@@ -51,6 +53,7 @@ for ((i=0; i<${#args[@]}; i++)); do
     --reinstall) reinstall=1 ;;
     --profile-git) profile_git="${args[i+1]:-}"; i=$((i+1)) ;;
     --openclaw-package) oc_package="$(realpath "${args[i+1]:-}")"; i=$((i+1)) ;;
+    --acpx-package) acpx_package="$(realpath "${args[i+1]:-}")"; i=$((i+1)) ;;
     --live-model) live_model="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-judge) live_judge="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-proxy) live_proxy="${args[i+1]:-}"; i=$((i+1)) ;;
@@ -96,6 +99,12 @@ oc_sha=""
 if [[ -n "$oc_package" ]]; then
   [[ -f "$oc_package" ]] || { echo "no package $oc_package" >&2; exit 1; }
   mounts+=(-v "$oc_package:/mnt/openclaw.tgz:ro"); oc_sha="$(sha256sum "$oc_package" | cut -d' ' -f1)"
+fi
+# ACPX from the fork: the same way, installed by the installer instead of the npm one (WORKBENCH_ACPX_PACKAGE).
+acpx_sha=""
+if [[ -n "$acpx_package" ]]; then
+  [[ -f "$acpx_package" ]] || { echo "no package $acpx_package" >&2; exit 1; }
+  mounts+=(-v "$acpx_package:/mnt/acpx.tgz:ro"); acpx_sha="$(sha256sum "$acpx_package" | cut -d' ' -f1)"
 fi
 # Own plugin clones: on this machine where the installer takes them from (WORKBENCH_PLUGINS_ROOT in the
 # environment or ~/.openclaw/.env, else its default); in the container always /home/tester/plugins.
@@ -179,6 +188,7 @@ su - tester -c "mkdir -p ~/knowledge/garden && echo The orchard quince is pruned
 su - tester -c "echo WORKBENCH_JUNIE=/home/tester/bin/junie >> ~/.openclaw/.env"
 su - tester -c "echo WORKBENCH_FORK_PRESETS=worker-limits,catalog-owner >> ~/.openclaw/.env"
 [[ -n "$OC_SHA" ]] && su - tester -c "printf \"WORKBENCH_OPENCLAW_PACKAGE=/mnt/openclaw.tgz\nWORKBENCH_OPENCLAW_PACKAGE_SHA256=$OC_SHA\n\" >> ~/.openclaw/.env"
+[[ -n "$ACPX_SHA" ]] && su - tester -c "printf \"WORKBENCH_ACPX_PACKAGE=/mnt/acpx.tgz\nWORKBENCH_ACPX_PACKAGE_SHA256=$ACPX_SHA\n\" >> ~/.openclaw/.env"
 # As after the first Chromium run: the browser data folder exists, so the installer registers the extension host.
 # Private, as Chromium itself creates it: OpenClaw rejects a group-writable one.
 su - tester -c "mkdir -p ~/.config/chromium/Default && chmod go-w ~/.config && chmod 700 ~/.config/chromium && echo {} > ~/.config/chromium/Default/Preferences"
@@ -211,6 +221,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   bash /opt/ai-workbench/tools/container_check_claude_cli.sh
   bash /opt/ai-workbench/tools/container_check_office.sh
   bash /opt/ai-workbench/tools/container_check_plan.sh
+  [[ -n \"$ACPX_SHA\" ]] && ACPX_SHA=$ACPX_SHA bash /opt/ai-workbench/tools/container_check_acpx.sh
   bash /opt/ai-workbench/tools/container_check_junie.sh
   [[ -n \"$LIVE_MODEL\" ]] && python3 /opt/ai-workbench/tools/live_model_check.py \"$LIVE_JUDGE\"
   if [[ -n \"$PROFILE_DIR\" ]]; then
@@ -225,13 +236,13 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
 [[ "$REINSTALL" == 1 ]] && su - tester -c "bash /opt/ai-workbench/tools/container_check_migration.sh \"$INSTALL_ARGS\""
 '
 # Log lines the result is read from; shared by a single run and the summary.
-KEY='LIVE_[A-Z_]+=|==== live model|MIGRATION_[A-Z_]+=|PLAN_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|KNOWLEDGE_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
+KEY='LIVE_[A-Z_]+=|==== live model|MIGRATION_[A-Z_]+=|PLAN_[A-Z_]+=|PROJECTS_[A-Z_]+=|OFFICE_[A-Z_]+|SETTINGS_[A-Z_]+|OPENCLAW_FORK_[A-Z_]+|ACPX_FORK_[A-Z_]+|OpenClaw from the fork|PROJECTS_RUN_HOOK|PROJECTS_RUN_STATUS |PROJECTS_MEMORY_PROMPT_TAIL|PROJECTS_FOLDERS |aiwb-memory|CHROME_HOST_[A-Z_]+=|PROJECTS_IMPORT_USER_ROWS|PROJECTS_BACKFILL |Applied: [0-9]+ replacements|Adoption by agents|CLI_|CHATS_|CATALOG_|In tree|Gateway now|Claude Code continuations|PROJECT_SKILL|duplicate skill name|project skill|ACP_|IDE_|PROFILE_ORIGIN|PROFILE_HOOK_LINKED|MARKETPLACE_HEAD|REINSTALL_|UNINSTALL_|INSTALL_AFTER_|keys [0-9]|own plugins after|config after reinstall|SKILLS_AGENT_|MAIN_WORKSPACE|MEMORY_|KNOWLEDGE_|SYNC_EXIT|SYNC2_EXIT|  task |⚠|MCP_DOCTOR_EXIT|sha256 .* matches|✗ |INSTALL_EXIT|HEALTH_EXIT|SKILLS_JSON_EXIT|JUDGE_SKILL|JUDGE_EXIT|JUDGE_CLI_|Judge verdict|Done:|SKIP|✗|Config valid|ABORTED'
 
 run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<name><-clean>/
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   { echo "IMAGE=${IMAGE[$d]} $(docker image inspect -f '{{index .RepoDigests 0}}' "${IMAGE[$d]}" 2>/dev/null)"
-    docker run --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
+    docker run --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
   } >"$out/install.log" 2>&1
   (( keep )) || docker rm -f "$name" >/dev/null 2>&1
 }

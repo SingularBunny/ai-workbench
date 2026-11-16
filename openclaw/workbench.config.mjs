@@ -196,8 +196,9 @@ export const PLUGINS = {
       commit: "fa4eb54397ee2faccb6940512a19c017cb1337f3" },   // 03.11.2026
   },
   bases: [],
-  // Needed only if WORKBENCH_VM_SSH or WORKBENCH_JUNIE is set.
-  runtime: [{ id: "@openclaw/acpx", when: ["WORKBENCH_VM_SSH", "WORKBENCH_JUNIE"] },
+  // Needed only if WORKBENCH_VM_SSH or WORKBENCH_JUNIE is set. From npm, or with WORKBENCH_ACPX_PACKAGE (+ _SHA256)
+  // from the ACPX package built from the fork next to the core (tools/openclaw-fork-build.sh, docs/openclaw-fork.md).
+  runtime: [{ id: "@openclaw/acpx", when: ["WORKBENCH_VM_SSH", "WORKBENCH_JUNIE"], package: "WORKBENCH_ACPX_PACKAGE" },
     // Local embeddings model for memory search (WORKBENCH_LOCAL_EMBEDDINGS).
     { id: "@openclaw/llama-cpp-provider", when: "WORKBENCH_LOCAL_EMBEDDINGS" },
     // Free-tier model providers shipped as separate packages, installed once their key is in .env

@@ -11,7 +11,8 @@ the way to use those credits from OpenClaw.
    and `~/.local/bin/junie`).
 2. Log in: run `~/.local/bin/junie` once and sign in with your JetBrains account. Junie keeps the login itself.
 3. Set `WORKBENCH_JUNIE` in `~/.openclaw/.env` to the full path of `junie` and run the installer again. It installs
-   `acpx` and registers Junie as the ACP agent `junie`.
+   `acpx` and registers Junie as the ACP agent `junie`. With the OpenClaw fork, install `acpx` from the same fork
+   too ([ACPX from the fork](../openclaw-fork.md#acpx-from-the-fork)).
 
 ## Use
 

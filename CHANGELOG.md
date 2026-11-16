@@ -9,6 +9,10 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- ACPX from the OpenClaw fork: `tools/openclaw-fork-build.sh` also packs the ACPX plugin from the same commit
+  (`openclaw-acpx-<version>-<commit>.tgz`), and with `WORKBENCH_ACPX_PACKAGE` and `WORKBENCH_ACPX_PACKAGE_SHA256` the
+  installer installs it instead of the npm copy, so the fork's ACPX Gateway methods are available. The Docker check
+  takes it with `--acpx-package`. Documentation: OpenClaw from a fork.
 - Dictation in the chat: the installer sets a speech-to-text model for the composer microphone — Groq Whisper
   (free tier) when `GROQ_API_KEY` is set, else OpenAI or OpenRouter's Whisper; `WORKBENCH_DICTATION_MODEL` picks one or
   turns it off. Documentation: Dictation.
