@@ -716,9 +716,10 @@ async function main() {
     if (r.code !== 0 && modelProvidersToRefresh(step).length && /Unknown model/.test(r.out)) {
       const value = JSON.parse(step.argv[3]);
       r = openclaw(["models", "set", value.primary], { capture: true });
-      if (r.code === 0 && value.fallbacks?.length) {
+      // The fallbacks follow .env here too: none in .env clears the ones left from before.
+      if (r.code === 0) {
         openclaw(["models", "fallbacks", "clear"], { capture: true });
-        for (const fallback of value.fallbacks) if (r.code === 0) r = openclaw(["models", "fallbacks", "add", fallback], { capture: true });
+        for (const fallback of value.fallbacks ?? []) if (r.code === 0) r = openclaw(["models", "fallbacks", "add", fallback], { capture: true });
       }
       if (r.code === 0) console.log(`  saved with \`openclaw models set\`: ${value.primary} is not in the offline model catalog`);
     }
