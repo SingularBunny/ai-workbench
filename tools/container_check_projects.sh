@@ -3,7 +3,8 @@
 # container_check_catalog.sh (its made-up Garden and Сад chats form the project tree).
 # Checked: the "Projects" catalog is visible; tree chats are in project folders; a project agent session
 # is a row in its folder linked to the session; continuing an old chat goes to its project's agent,
-# not the selected one; repeating the continuation gives the same session.
+# not the selected one; repeating the continuation gives the same session; a chat adopted into main before its
+# folder had an agent moves there when untouched, and is offered the move when used.
 # Settings are restored with retries: a write may hit a Gateway reload.
 retry() { for i in 1 2 3 4 5 6; do "$@" >/dev/null 2>&1 && return 0; sleep 3; done; echo "✗ failed: $*"; return 1; }
 echo "==== projects"
@@ -186,6 +187,100 @@ a = turn[-1] if turn else []
 ok = "--resume" in a and a[a.index("--resume") + 1] != ids["long"] and "--fork-session" not in a
 print(f"PROJECTS_SECOND_TURN_IN_FORK={0 if ok else 1}")
 PY2
+# Re-homing (aiwb-claude-bridge rehome.js): chats adopted into main while their folder had no agent. Three made-up chats
+# of the folder Огород, which has no project agent yet, are adopted into main: one stays untouched (pinned, renamed and
+# read: metadata, not turns), one gets a turn in main, one is archived. Then the folder gets its agent: the untouched
+# chat moves there by itself, the used one stays and is offered the move (the chat menu button calls
+# sessions.catalog.move), the archived one stays archived.
+python3 - <<'PY2'
+import json, os
+home = os.path.expanduser("~"); cwd = f"{home}/claude-projects/Огород"; os.makedirs(cwd, exist_ok=True)
+d = os.path.join(home, ".claude/projects", "".join(c if c.isascii() and c.isalnum() else "-" for c in cwd)); os.makedirs(d, exist_ok=True)
+ids = {"beds": "c1c1c1c1-0000-4000-8000-000000000000", "water": "c2c2c2c2-0000-4000-8000-000000000000", "compost": "c3c3c3c3-0000-4000-8000-000000000000"}
+for k, title in [("beds", "Грядки"), ("water", "Полив огорода"), ("compost", "Компост")]:
+    sid = ids[k]
+    rs = [{"type": r, "uuid": f"{sid[:8]}-0000-4000-8000-00000000000{i}", "parentUuid": None, "sessionId": sid, "entrypoint": "local-agent",
+           "timestamp": f"2026-03-0{i + 1}T10:00:00.000Z", "cwd": cwd,
+           "message": {"role": r, "content": t} if r == "user" else {"role": r, "model": "claude-x", "content": [{"type": "text", "text": t}]}}
+          for i, (r, t) in enumerate([("user", f"REHOME_{k.upper()} question"), ("assistant", f"REHOME_{k.upper()} answer")])]
+    rs.append({"type": "custom-title", "customTitle": title, "sessionId": sid})
+    open(f"{d}/{sid}.jsonl", "w").write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rs))
+json.dump(ids, open("/tmp/rehome-ids.json", "w"))
+PY2
+# Session key of a made-up chat imported into an agent (buildSessionCatalogImportKey).
+rk() { python3 -c 'import hashlib, json, sys
+t = json.load(open("/tmp/rehome-ids.json"))[sys.argv[2]]
+print(f"agent:{sys.argv[1]}:catalog-import:" + hashlib.sha256(json.dumps(["claude", "gateway:local", None, t], separators=(",", ":")).encode()).hexdigest())' "$1" "$2"; }
+rsid() { openclaw gateway call sessions.list --params '{"limit":1000}' --json 2>/dev/null | python3 -c 'import json,sys; print(next((s["sessionId"] for s in json.load(sys.stdin)["sessions"] if s["key"]==sys.argv[1]), ""))' "$1"; }
+mb=$(rk main beds); mw=$(rk main water); mc=$(rk main compost); ob=$(rk ogorod beds)
+adopt_run >/dev/null
+for i in $(seq 1 20); do list; grep -q "\"$mb\"" /tmp/projects-list.json && grep -q "\"$mw\"" /tmp/projects-list.json && grep -q "\"$mc\"" /tmp/projects-list.json && break; sleep 3; done
+grep -q "\"$mb\"" /tmp/projects-list.json && grep -q "\"$mw\"" /tmp/projects-list.json && grep -q "\"$mc\"" /tmp/projects-list.json; echo "PROJECTS_REHOME_ADOPTED_MAIN=$?"
+openclaw gateway call sessions.patch --params "{\"key\":\"$mb\",\"pinned\":true}" --json > /tmp/rehome-patch.log 2>&1
+openclaw gateway call sessions.patch --params "{\"key\":\"$mb\",\"label\":\"Грядки весной\"}" --json >> /tmp/rehome-patch.log 2>&1
+openclaw gateway call sessions.patch --params "{\"key\":\"$mb\",\"unread\":false}" --json >> /tmp/rehome-patch.log 2>&1
+openclaw agent --session-key "$mw" -m "REHOME_USED_MARK water the beds" --json > /tmp/rehome-turn.json 2>&1
+grep -q FAKE_CLAUDE_OK /tmp/rehome-turn.json; echo "PROJECTS_REHOME_USED_TURN=$?"
+openclaw gateway call sessions.patch --params "{\"key\":\"$mc\",\"expectedSessionId\":\"$(rsid "$mc")\",\"archived\":true}" --json >> /tmp/rehome-patch.log 2>&1
+# The folder gets its agent.
+openclaw agents add ogorod --workspace "$HOME/ws-ogorod" --non-interactive >/tmp/rehome-agent.log 2>&1 || openclaw agents add ogorod --workspace "$HOME/ws-ogorod" >>/tmp/rehome-agent.log 2>&1 </dev/null
+retry openclaw config set plugins.entries.aiwb-claude-bridge.config '{"projects":{"Garden":"main","Сад":"sad","Огород":"ogorod"},"memorySync":{"root":"/home/tester/claude-projects"}}' --strict-json
+for i in $(seq 1 60); do list; grep -q "\"$ob\"" /tmp/projects-list.json && break; sleep 3; done
+grep -E "aiwb-claude-bridge (moved untouched|untouched chats|adoption by agents)|  ✗ " /tmp/gw.log | tail -8 | sed "s/^/PROJECTS_REHOME_LOG /"
+rehome_state() {
+  list
+  openclaw gateway call sessions.list --params '{"limit":1000}' --json > /tmp/rehome-live.json 2>/dev/null
+  openclaw gateway call sessions.list --params '{"limit":1000,"archived":true}' --json > /tmp/rehome-arch.json 2>/dev/null
+  openclaw gateway call aiwb-claude-bridge.rehome.offers --params '{}' --json > /tmp/rehome-offers.json 2>/dev/null
+}
+rehome_state
+openclaw gateway call chat.history --params "{\"sessionKey\":\"$ob\",\"limit\":20}" --json > /tmp/rehome-history.json 2>/dev/null
+MB=$mb MW=$mw MC=$mc OB=$ob python3 - <<'PY2'
+import json, os
+mb, mw, mc, ob = (os.environ[k] for k in ("MB", "MW", "MC", "OB"))
+def ok(name, cond): print(f"{name}={0 if cond else 1}")
+def load(f, key):
+    try: return json.load(open(f)).get(key) or []
+    except Exception: return []
+rows = json.load(open("/tmp/projects-list.json"))["catalogs"][0]["hosts"][0]["sessions"]
+live = {s["key"]: s for s in load("/tmp/rehome-live.json", "sessions")}
+arch = {s["key"]: s for s in load("/tmp/rehome-arch.json", "sessions") if s.get("archived") or s.get("archivedAt")}
+offers = load("/tmp/rehome-offers.json", "offers")
+by = {s.get("sessionKey"): s for s in rows}
+print("PROJECTS_REHOME_ROWS", [(s.get("customGroup"), s.get("name")) for s in rows if "catalog-import" in s.get("sessionKey", "") and s.get("customGroup") in ("Огород", "_no_space")])
+print("PROJECTS_REHOME_OFFERS", [(o.get("sessionKey", "")[:30], o.get("folder"), o.get("untouched")) for o in offers])
+n = live.get(ob, {})
+print("PROJECTS_REHOME_NEW_STATE", {k: n.get(k) for k in ("pinned", "label", "displayName", "lastReadAt", "unread", "visibility")})
+ok("PROJECTS_REHOME_AUTO", by.get(ob, {}).get("customGroup") == "Огород" and mb not in by)
+ok("PROJECTS_REHOME_OLD_ARCHIVED", mb not in live or bool(live[mb].get("archived")) or mb in arch)
+ok("PROJECTS_REHOME_KEEPS_STATE", n.get("pinned") is True and "Грядки весной" in (n.get("label"), n.get("displayName")) and bool(n.get("lastReadAt")) and n.get("visibility") == "shared")
+ok("PROJECTS_REHOME_HISTORY", "REHOME_BEDS answer" in open("/tmp/rehome-history.json").read())
+ok("PROJECTS_REHOME_USED_STAYS", mw in by and not any(k.startswith("agent:ogorod:") and k.endswith(mw.rsplit(":", 1)[1]) for k in live))
+ok("PROJECTS_REHOME_OFFERED", any(o.get("sessionKey") == mw and o.get("folder") == "Огород" and o.get("agentId") == "ogorod" and o.get("untouched") is False for o in offers)
+   and not any(o.get("sessionKey") == mb for o in offers))
+ok("PROJECTS_REHOME_ARCHIVED_STAYS", mc not in by and not any(k.startswith("agent:ogorod:") and k.endswith(mc.rsplit(":", 1)[1]) for k in list(live) + list(arch)))
+PY2
+[[ "$(adopt_run)" == "adopted 0, errors 0" ]]; echo "PROJECTS_REHOME_NO_REIMPORT=$?"
+# The menu button's request: the used chat moves to the folder's agent with the turn made in main.
+openclaw gateway call sessions.catalog.move --params "{\"catalogId\":\"projects\",\"hostId\":\"gateway:local\",\"threadId\":\"s:$mw\",\"group\":\"Огород\"}" --json > /tmp/rehome-move.json 2>&1
+nw=$(python3 -c 'import json; print(json.load(open("/tmp/rehome-move.json")).get("sessionKey", ""))' 2>/dev/null)
+echo "PROJECTS_REHOME_BUTTON_RESULT $(tr -d '\n' < /tmp/rehome-move.json | cut -c1-300)"
+rehome_state
+openclaw gateway call chat.history --params "{\"sessionKey\":\"$nw\",\"limit\":20}" --json > /tmp/rehome-history2.json 2>/dev/null
+MW=$mw NW=$nw python3 - <<'PY2'
+import json, os
+mw, nw = os.environ["MW"], os.environ["NW"]
+def ok(name, cond): print(f"{name}={0 if cond else 1}")
+rows = json.load(open("/tmp/projects-list.json"))["catalogs"][0]["hosts"][0]["sessions"]
+by = {s.get("sessionKey"): s for s in rows}
+live = {s["key"]: s for s in json.load(open("/tmp/rehome-live.json")).get("sessions", [])}
+offers = json.load(open("/tmp/rehome-offers.json")).get("offers", [])
+ok("PROJECTS_REHOME_BUTTON_MOVED", nw.startswith("agent:ogorod:") and by.get(nw, {}).get("customGroup") == "Огород" and mw not in by
+   and (mw not in live or bool(live[mw].get("archived"))) and not any(o.get("sessionKey") == mw for o in offers))
+ok("PROJECTS_REHOME_BUTTON_HISTORY", "REHOME_USED_MARK" in open("/tmp/rehome-history2.json").read())
+PY2
+[[ "$(adopt_run)" == "adopted 0, errors 0" ]]; echo "PROJECTS_REHOME_BUTTON_NO_REIMPORT=$?"
+retry openclaw config set plugins.entries.aiwb-claude-bridge.config '{"projects":{"Garden":"main","Сад":"sad"},"memorySync":{"root":"/home/tester/claude-projects"}}' --strict-json
 # A new agent chat lives in the Claude Desktop project folder (agents.entries.<id>.cwd), instructions come
 # from the agent's working folder; in the tree it is a single row, not adopted.
 echo "CWD_KEEPS_MARK: sad agent instructions" >> "$HOME/ws-sad/AGENTS.md"

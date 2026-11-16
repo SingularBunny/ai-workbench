@@ -42,6 +42,22 @@ main chat of a project, a chat that is answering right now (wait for the turn to
 Code transcript; the sidebar puts such a chat back and shows why. Moving needs the same Gateway grant as importing
 in the Gateway (below).
 
+**A project that gets its agent later.** A chat imported while its folder had no project agent yet (the folder was
+not in the bridge's `projects`, or that agent was not created) goes to the default agent (`main`, shown under
+"Other"). Once the folder's agent exists:
+
+- a chat nobody has written in since the import moves to that agent by itself, at the next import pass (about half
+  a minute after the settings change): same title, pin and read state, whole history; its session under `main` is
+  archived;
+- a chat used under `main` stays there, and its ⋯ menu offers **Move to project &lt;folder&gt;…** (in Russian
+  «Перенести в проект …»). After a confirmation it moves like a dragged chat, with the turns made under `main`;
+- archived and deleted chats stay as they are.
+
+"Nobody has written" is read from the session record: no user or channel message (`lastInteractionAt`), no turn
+started or completed (`sessionStartedAt`, `systemSent`, `lastRunId`, `lastActivityAt`), no `/new` or `/reset`
+(`previousSessionId`), and the Claude CLI binding is still the imported chat itself (the first Claude turn moves it
+to a fork). Renaming, pinning and reading a chat do not count.
+
 A chat with a turn in progress shows a spinning ring in "Projects" too: the plugin marks the start and end of a turn with hooks
 (`plugins.entries.aiwb-claude-bridge.hooks.allowConversationAccess`, set by the installer; the plugin does not
 read the conversation). The sidebar re-reads the catalog every ~2 minutes, so the ring lags by up to
