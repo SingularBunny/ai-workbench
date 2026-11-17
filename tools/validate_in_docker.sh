@@ -223,6 +223,7 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   bash /opt/ai-workbench/tools/container_check_plan.sh
   [[ -n \"$ACPX_SHA\" ]] && ACPX_SHA=$ACPX_SHA bash /opt/ai-workbench/tools/container_check_acpx.sh
   bash /opt/ai-workbench/tools/container_check_junie.sh
+  bash /opt/ai-workbench/tools/container_check_groups.sh
   [[ -n \"$LIVE_MODEL\" ]] && python3 /opt/ai-workbench/tools/live_model_check.py \"$LIVE_JUDGE\"
   if [[ -n \"$PROFILE_DIR\" ]]; then
     echo ==== tasks; node=\$(find ~/.openclaw -maxdepth 5 -type f -path \"*/bin/node\" | head -1)
