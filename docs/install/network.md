@@ -49,7 +49,8 @@ WORKBENCH_PROXY_ROUTES=*=http://127.0.0.1:3128;intranet.example.com=direct
 `WORKBENCH_OPENCLAW_PACKAGE` is an `https://` URL, the fork package. These downloads follow the same
 optional keys: with `WORKBENCH_PROXY_URL` set, a host that matches `WORKBENCH_PROXY_HOSTS` (or every host,
 when the list is empty, `*` or `all`) is fetched through the proxy, everything else directly. Without a
-proxy URL everything goes directly. `WORKBENCH_PROXY_ROUTES` is not read for these downloads. If
+proxy URL everything goes directly. When the chosen route fails, the download is retried once over the
+other one (proxy → direct, or direct → proxy when a proxy URL is set). `WORKBENCH_PROXY_ROUTES` is not read for these downloads. If
 `openclaw.ai` is blocked on your network, add it to `WORKBENCH_PROXY_HOSTS`.
 
 `install-cli.sh` then downloads Node and npm packages itself and follows `HTTPS_PROXY` from the

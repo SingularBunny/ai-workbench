@@ -58,11 +58,17 @@ fetch() {
   local src="$1" out="$2" host proxy
   host="${src#https://}"; host="${host%%/*}"; host="${host%%:*}"
   proxy="$(proxy_for "$host")"
+  # The route that fails falls back to the other one: the proxy is preferred for its hosts, never required.
   if [[ -n "$proxy" ]]; then
     echo "Downloading from $host through the proxy in WORKBENCH_PROXY_URL…"
-    curl -fsSL --proto '=https' --tlsv1.2 --proxy "$proxy" "$src" -o "$out"
-  else
+    curl -fsSL --proto '=https' --tlsv1.2 --proxy "$proxy" "$src" -o "$out" && return 0
+    echo "The proxy failed for $host; trying directly…"
     curl -fsSL --proto '=https' --tlsv1.2 "$src" -o "$out"
+  else
+    curl -fsSL --proto '=https' --tlsv1.2 "$src" -o "$out" && return 0
+    [[ -n "${WORKBENCH_PROXY_URL:-}" ]] || return 1
+    echo "The direct download from $host failed; trying through the proxy in WORKBENCH_PROXY_URL…"
+    curl -fsSL --proto '=https' --tlsv1.2 --proxy "$WORKBENCH_PROXY_URL" "$src" -o "$out"
   fi
 }
 # OpenClaw agents started by an IDE (`openclaw acp`, JetBrains AI Assistant) keep running the files of the
