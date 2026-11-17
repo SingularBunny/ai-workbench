@@ -9,6 +9,11 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Group chat in a chat (OpenClaw fork, `aiwb-groups` 0.2.0): agents, ACP agents and models added to any chat answer
+  when named (`@Junie …`, **Ask Junie**), their replies in the chat under their own name
+  ([Groups](docs/features/groups.md#group-chat-in-a-chat)). The Docker check `tools/container_check_groups.sh` adds the
+  stand-in Junie to a chat, asks it twice and checks its replies land in the chat as Junie rows (skipped with an
+  `aiwb-groups` without group chats).
 - ACPX from the OpenClaw fork: `tools/openclaw-fork-build.sh` also packs the ACPX plugin from the same commit
   (`openclaw-acpx-<version>-<commit>.tgz`), and with `WORKBENCH_ACPX_PACKAGE` and `WORKBENCH_ACPX_PACKAGE_SHA256` the
   installer installs it instead of the npm copy, so the fork's ACPX Gateway methods are available. The Docker check
