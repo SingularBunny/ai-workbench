@@ -1196,3 +1196,10 @@ test("default model: providers outside the built-in catalog are refreshed before
   assert.deepEqual(modelProvidersToRefresh(step({ primary: "anthropic/claude-opus-5-5" })), []);
   assert.deepEqual(modelProvidersToRefresh({ kind: "config", id: "gateway.port", argv: [] }), []);
 });
+
+test("groupsHooksStep grants aiwb-groups conversation access only", async () => {
+  const { groupsHooksStep } = await import("../lib.mjs");
+  const step = groupsHooksStep();
+  assert.equal(step.id, "plugins.entries.aiwb-groups.hooks.allowConversationAccess");
+  assert.deepEqual(step.argv, ["config", "set", "plugins.entries.aiwb-groups.hooks.allowConversationAccess", "true", "--strict-json"]);
+});

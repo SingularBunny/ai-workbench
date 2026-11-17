@@ -1110,6 +1110,13 @@ export function projectsHooksStep() {
     argv: ["config", "set", "plugins.entries.aiwb-claude-bridge.hooks.allowConversationAccess", "true", "--strict-json"] };
 }
 
+/** aiwb-groups reads each member's reply from the agent_end hook, which needs conversation access.
+ *  Only this key, and only when the profile installs the plugin. */
+export function groupsHooksStep() {
+  return { kind: "config", id: "plugins.entries.aiwb-groups.hooks.allowConversationAccess", note: "member replies in group chats",
+    argv: ["config", "set", "plugins.entries.aiwb-groups.hooks.allowConversationAccess", "true", "--strict-json"] };
+}
+
 /** OpenClaw fork: the bridge adopts old chats in the Gateway and reads the live turn status of the tree rows;
  *  the fork lets it call these Gateway methods in process (the list in aiwb-plugins claude-bridge/adopt.js,
  *  GATEWAY_METHODS). Without the fork
