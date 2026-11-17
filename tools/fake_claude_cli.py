@@ -113,6 +113,11 @@ while True:
         except (OSError, ValueError):
             pass
         text = f"FAKE_CLAUDE_OK model={model}"
+        # A browser check can make the reply carry more (a file path to open): extra text comes from a file.
+        try:
+            text += "\n\n" + open("/tmp/fake-claude-reply", encoding="utf-8").read().strip()
+        except OSError:
+            pass
         # The conversation goes where Claude CLI writes it: OpenClaw checks the file after a fork.
         proj = os.path.join(os.path.expanduser("~"), ".claude", "projects", "".join(c if c.isascii() and c.isalnum() else "-" for c in os.getcwd()))
         os.makedirs(proj, exist_ok=True)
@@ -128,3 +133,6 @@ while True:
         send({"type": "result", "subtype": "success", "is_error": False, "result": text, "session_id": session,
               "num_turns": 1, "stop_reason": "end_turn", "duration_ms": 1, "total_cost_usd": 0,
               "usage": {"input_tokens": 1, "output_tokens": 1}})
+        # Claude Code forks its next-prompt suggestion after the result when asked to.
+        if opt("--prompt-suggestions") == "true":
+            send({"type": "prompt_suggestion", "suggestion": "FAKE_SUGGESTION next step", "session_id": session})
