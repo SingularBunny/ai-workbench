@@ -5,7 +5,13 @@
 # `claude -p` with the right model, the system prompt has the agent's working folder instructions,
 # the reply reaches OpenClaw. After the check the model is restored.
 # Settings are restored with retries: a write may hit a Gateway reload.
-retry() { for i in 1 2 3 4 5 6; do "$@" >/dev/null 2>&1 && return 0; sleep 3; done; echo "✗ failed: $*"; return 1; }
+# The model and its runtime are written with the Gateway stopped: from 2026.11.5 a `config set` goes through the
+# running Gateway, and a model change there may end in a recovery restart (the command fails although the value is
+# saved, the next write meets the restarting Gateway). Stopped, the write goes to the file, as on 2026.11.3.
+retry() { local out; for i in 1 2 3 4 5 6; do out=$("$@" 2>&1) && return 0; sleep 3; done; echo "✗ failed: $*"; echo "$out" | grep -v '^\[' | tail -3; return 1; }
+gw_stop() { pkill -u "$(id -u)" -f '^openclaw-gateway'; for i in $(seq 1 60); do pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null || break; sleep 1; done; }
+gw_start() { (FAKE_CLAUDE_LOG=$FAKE_CLAUDE_LOG openclaw gateway run > /tmp/gw.log 2>&1 &); for i in $(seq 1 45); do sleep 2; openclaw health >/dev/null 2>&1 && break; done; }
+restart() { gw_stop; gw_start; }
 echo "==== claude-cli"
 export FAKE_CLAUDE_LOG=/tmp/fake-claude; rm -rf "$FAKE_CLAUDE_LOG"
 cp /home/tester/bin/claude /tmp/claude-stub.bak
@@ -15,13 +21,11 @@ ws=$(openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys; prin
 mkdir -p "$ws" && echo "CLI_WORKSPACE_MARK: working folder instructions" >> "$ws/AGENTS.md"
 
 # The same keys the installer writes (openclaw/workbench.config.mjs).
-openclaw config set agents.defaults.model '{"primary":"anthropic/claude-opus-5-5","fallbacks":["openrouter/auto"]}' --strict-json >/dev/null; echo "CLI_SET_MODEL=$?"
-openclaw config set 'agents.defaults.models["anthropic/claude-opus-5-5"].agentRuntime' '{"id":"claude-cli"}' --strict-json >/dev/null; echo "CLI_SET_RUNTIME=$?"
+gw_stop
+retry openclaw config set agents.defaults.model '{"primary":"anthropic/claude-opus-5-5","fallbacks":["openrouter/auto"]}' --strict-json; echo "CLI_SET_MODEL=$?"
+retry openclaw config set 'agents.defaults.models["anthropic/claude-opus-5-5"].agentRuntime' '{"id":"claude-cli"}' --strict-json; echo "CLI_SET_RUNTIME=$?"
 openclaw config validate >/dev/null 2>&1; echo "CLI_CONFIG_VALID=$?"
-
-restart() { pkill -u "$(id -u)" -f '^openclaw-gateway'; for i in $(seq 1 30); do openclaw health >/dev/null 2>&1 || break; sleep 1; done
-  (FAKE_CLAUDE_LOG=$FAKE_CLAUDE_LOG openclaw gateway run > /tmp/gw.log 2>&1 &); for i in $(seq 1 45); do sleep 2; openclaw health >/dev/null 2>&1 && break; done; }
-restart
+gw_start
 openclaw agent --agent main -m "Hello" --json > /tmp/cli-turn.json 2>&1; echo "CLI_TURN_EXIT=$?"
 grep -q FAKE_CLAUDE_OK /tmp/cli-turn.json; echo "CLI_REPLY_FROM_CLAUDE=$?"
 # The fork's managedTurns: false (F62) must give an unmanaged turn; otherwise OpenClaw manages it (2026.11+).
@@ -82,7 +86,8 @@ if [[ "$unmanaged" == false ]]; then
 fi
 
 # Restore: model, runtime, claude stub, Gateway.
+gw_stop
 retry openclaw config set agents.defaults.model "$before" --strict-json
 retry openclaw config unset 'agents.defaults.models["anthropic/claude-opus-5-5"]'
 cp /tmp/claude-stub.bak /home/tester/bin/claude
-restart
+gw_start

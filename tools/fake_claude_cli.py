@@ -56,7 +56,39 @@ def send(obj):
     sys.stdout.flush()
 
 
-for line in sys.stdin:
+def prompt_hook(content):
+    """As Claude CLI does before a turn: the host's UserPromptSubmit hook (registered in `initialize`) may return
+    additionalContext. From 2026.11.5 OpenClaw sends a resumed live session the history it missed this way."""
+    hooks = (call.get("initialize") or {}).get("hooks") or {}
+    ids = [i for m in hooks.get("UserPromptSubmit") or [] for i in m.get("hookCallbackIds") or []]
+    if not ids:
+        return
+    text = content if isinstance(content, str) else "".join(b.get("text", "") for b in content if isinstance(b, dict))
+    rid = f"fake-hook-{uuid.uuid4()}"
+    send({"type": "control_request", "request_id": rid, "request": {"subtype": "hook_callback", "callback_id": ids[0],
+          "input": {"hook_event_name": "UserPromptSubmit", "prompt": text, "session_id": session}, "tool_use_id": None}})
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return
+        try:
+            reply = json.loads(line)
+        except ValueError:
+            continue
+        r = reply.get("response") or {}
+        if reply.get("type") == "control_response" and r.get("request_id") == rid:
+            extra = ((r.get("response") or {}).get("hookSpecificOutput") or {}).get("additionalContext")
+            if extra:
+                call.setdefault("hookContext", []).append(extra)
+            return
+        pending.append(line)
+
+
+pending = []
+while True:
+    line = pending.pop(0) if pending else sys.stdin.readline()
+    if not line:
+        break
     try:
         msg = json.loads(line)
     except ValueError:
@@ -72,6 +104,7 @@ for line in sys.stdin:
     elif msg.get("type") == "user":
         # What the turn got: a check looks for history OpenClaw put into the prompt.
         call.setdefault("userMessages", []).append(msg.get("message", {}).get("content", ""))
+        prompt_hook(msg.get("message", {}).get("content", ""))
         with open(os.path.join(LOG, f"call-{os.getpid()}.json"), "w", encoding="utf-8") as f:
             json.dump(call, f, ensure_ascii=False)
         # A long turn for "is the turn running" checks: delay seconds come from a file.

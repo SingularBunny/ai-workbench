@@ -38,11 +38,14 @@ if [[ "$(openclaw config get acp.seedParentHistory 2>/dev/null | tail -1)" == tr
   export FAKE_CLAUDE_LOG=/tmp/fake-claude-shared; rm -rf "$FAKE_CLAUDE_LOG"; : > "$FAKE_JUNIE_LOG"
   cp /home/tester/bin/claude /tmp/claude-stub-shared.bak; install -m 755 /opt/ai-workbench/tools/fake_claude_cli.py /home/tester/bin/claude
   before=$(openclaw config get agents.defaults.model --json 2>/dev/null)
-  openclaw config set agents.defaults.model '{"primary":"anthropic/claude-opus-5-5"}' --strict-json >/dev/null
-  openclaw config set 'agents.defaults.models["anthropic/claude-opus-5-5"].agentRuntime' '{"id":"claude-cli"}' --strict-json >/dev/null
-  restart() { pkill -u "$(id -u)" -f '^openclaw-gateway'; for i in $(seq 1 30); do openclaw health >/dev/null 2>&1 || break; sleep 1; done
-    (FAKE_CLAUDE_LOG=$FAKE_CLAUDE_LOG FAKE_JUNIE_LOG=$FAKE_JUNIE_LOG openclaw gateway run > /tmp/gw.log 2>&1 &); for i in $(seq 1 45); do sleep 2; openclaw health >/dev/null 2>&1 && break; done; }
-  restart
+  # Model writes with the Gateway stopped, as in container_check_claude_cli.sh (2026.11.5 admits them in the Gateway).
+  retry() { local out; for i in 1 2 3 4 5 6; do out=$("$@" 2>&1) && return 0; sleep 3; done; echo "✗ failed: $*"; echo "$out" | grep -v '^\[' | tail -3; return 1; }
+  gw_stop() { pkill -u "$(id -u)" -f '^openclaw-gateway'; for i in $(seq 1 60); do pgrep -u "$(id -u)" -f '^openclaw-gateway' >/dev/null || break; sleep 1; done; }
+  gw_start() { (FAKE_CLAUDE_LOG=$FAKE_CLAUDE_LOG FAKE_JUNIE_LOG=$FAKE_JUNIE_LOG openclaw gateway run > /tmp/gw.log 2>&1 &); for i in $(seq 1 45); do sleep 2; openclaw health >/dev/null 2>&1 && break; done; }
+  gw_stop
+  retry openclaw config set agents.defaults.model '{"primary":"anthropic/claude-opus-5-5"}' --strict-json
+  retry openclaw config set 'agents.defaults.models["anthropic/claude-opus-5-5"].agentRuntime' '{"id":"claude-cli"}' --strict-json
+  gw_start
   key=agent:main:shared-check
   send() { "$node" /opt/ai-workbench/tools/chat_send_admin.mjs "$pkg" "$key" "$1" "$2" >> /tmp/shared.json 2>&1; }
   count() { history | grep -o "$1" | wc -l; }
@@ -64,8 +67,9 @@ PY
   send "What did Junie answer?" shared-6; waitn FAKE_CLAUDE_OK 2
   grep -l 'What did Junie answer' "$FAKE_CLAUDE_LOG"/call-*.json 2>/dev/null | xargs -r grep -q 'FAKE_JUNIE_OK'; echo "SHARED_CLAUDE_SEES_JUNIE=$?"
   # Restore: model, runtime, claude stub, Gateway.
-  openclaw config set agents.defaults.model "$before" --strict-json >/dev/null
-  openclaw config unset 'agents.defaults.models["anthropic/claude-opus-5-5"]' >/dev/null
+  gw_stop
+  retry openclaw config set agents.defaults.model "$before" --strict-json
+  retry openclaw config unset 'agents.defaults.models["anthropic/claude-opus-5-5"]'
   cp /tmp/claude-stub-shared.bak /home/tester/bin/claude
-  restart
+  gw_start
 fi
