@@ -119,6 +119,41 @@ const i = t.indexOf("{"); if (i < 0) process.exit(3); console.log(upcomingAutoma
     sleep 15
   done
 }
+# Maintenance mode (fork: gateway.maintenance.*, installer/maintenance.mjs): from before OpenClaw is replaced until
+# setup.mjs ends, the Gateway starts no chat turn: Control UI messages wait in its outbox and send themselves after,
+# durable channel messages stay queued, automations and heartbeats are deferred, config and plugin writes go on.
+# The state is on disk, so it survives the restart of the replacement; it ends on every exit of this script
+# (trap), and on its own after 2 hours if the script is killed. A Gateway without it: wait_gateway_idle as before.
+maintenance_on=0
+maint() {
+  local node_m; node_m="$(command -v node || find "$prefix" -maxdepth 5 -type f -path '*/bin/node' 2>/dev/null | head -1)"
+  [[ -x "$node_m" ]] && command -v openclaw >/dev/null || return 2
+  "$node_m" "$here/maintenance.mjs" "$@"
+}
+resume_chats() {
+  (( maintenance_on )) || return 0
+  maintenance_on=0
+  maint exit || true
+}
+cleanup_dirs=()
+on_exit() { resume_chats; (( ${#cleanup_dirs[@]} )) && rm -rf "${cleanup_dirs[@]}"; return 0; }
+trap on_exit EXIT
+trap 'exit 130' INT TERM
+# Pauses chats and waits for running turns. $1: what follows, for the messages.
+pause_chats() {
+  (( dry )) && return 0
+  local rc=0
+  if (( maintenance_on )); then maint ensure >/dev/null || true; return 0; fi
+  maint enter || rc=$?
+  case "$rc" in
+    0) maintenance_on=1 ;;
+    3) maint exit >/dev/null || true
+       echo "Not continuing: agent turns still run, so $1 would break them. Nothing has been changed;" >&2
+       echo "chats are resumed. Run the install again later, or raise WORKBENCH_MAINTENANCE_WAIT_MIN (minutes, default 30)." >&2
+       exit 1 ;;
+    *) if [[ "$1" == "the replacement" ]]; then wait_gateway_idle; fi ;;
+  esac
+}
 ide_agents_note() {
   local pids; pids="$(ide_agents)"
   [[ -n "$pids" ]] || return 0
@@ -152,7 +187,7 @@ if (( ! uninstall )) && [[ -n "${WORKBENCH_OPENCLAW_PACKAGE:-}" ]]; then
     fi
     got="$(sha "$ptmp/openclaw.tgz")"
     [[ "$got" == "$want" ]] || { echo "Fork package: sha256 $got, expected $want — not installing." >&2; rm -rf "$ptmp"; exit 1; }
-    wait_gateway_idle
+    pause_chats "the replacement"
     echo "Installing OpenClaw from the fork (sha256 $got) with the official install-cli.sh…"
     backup_before_replace
     ide_agents_note "and will keep the old OpenClaw files"
@@ -199,11 +234,11 @@ elif (( ! to_official )) && command -v openclaw >/dev/null && openclaw --version
 elif (( dry )); then
   echo "[dry-run] would install OpenClaw $version into $prefix with the official install-cli.sh"
 else
-  wait_gateway_idle
+  pause_chats "the replacement"
   echo "Installing OpenClaw $version into $prefix (official install-cli.sh)…"
   backup_before_replace
   ide_agents_note "and will keep the old OpenClaw files"
-  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+  tmp="$(mktemp -d)"; cleanup_dirs+=("$tmp")
   fetch https://openclaw.ai/install-cli.sh "$tmp/install-cli.sh"
   # Download to a file, not `| bash`: an interrupted download will not run half a script.
   echo "install-cli.sh sha256: $( (sha256sum "$tmp/install-cli.sh" 2>/dev/null || shasum -a 256 "$tmp/install-cli.sh") | cut -d' ' -f1)"
@@ -235,4 +270,10 @@ if [[ -z "$node_bin" ]] || ! "$node_bin" -e 'const [a,b]=process.versions.node.s
 fi
 [[ -x "$node_bin" ]] || { echo "Node >= 24 not found in PATH or in $prefix." >&2; exit 1; }
 
-exec "$node_bin" "$here/setup.mjs" "$@"
+# Setup rewrites config, plugins and skills through the Gateway: chats stay paused until it ends. Maintenance from
+# before the replacement survived the restart (on disk); `ensure` also covers a Gateway that gained it only now.
+pause_chats "the setup"
+rc=0
+"$node_bin" "$here/setup.mjs" "$@" || rc=$?
+resume_chats
+exit "$rc"
