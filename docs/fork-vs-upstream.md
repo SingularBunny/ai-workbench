@@ -11,6 +11,8 @@ fork's [FORK.md](https://github.com/SingularBunny/openclaw/blob/aiwb/2026.11.3/F
 
 ## Who answers a chat
 
+![The model picker with local models and an Agents group, the "is answering · Return to" chip and a group chat strip](assets/readme/chat-handoff.png)
+
 | Change | Models |
 |---|---|
 | Switch the answerer by buttons: an **Agents** group in the model picker, **Hand off to…** under a reply, a **… is answering · Return to …** chip, **Retry** / **Choose another model** under a failed turn | any model |
@@ -43,6 +45,8 @@ fork's [FORK.md](https://github.com/SingularBunny/openclaw/blob/aiwb/2026.11.3/F
 
 ## Projects tree and files
 
+![The folder menu in the projects tree](assets/readme/projects-tree.png)
+
 | Change | Models |
 |---|---|
 | Folder menu in the sidebar tree: **New chat in this folder**, **Open folder in file manager**, **Copy folder path**, **Agent settings** | any model |
@@ -62,6 +66,8 @@ fork's [FORK.md](https://github.com/SingularBunny/openclaw/blob/aiwb/2026.11.3/F
 | Automation runs that end silently or fail keep the chat marked unread; automation chats in project folders follow **Show automation sessions** | any model |
 
 ## Running it every day
+
+![Maintenance banner: chats paused, Resume chats](assets/readme/maintenance.png)
 
 | Change | Models |
 |---|---|

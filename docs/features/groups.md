@@ -43,6 +43,8 @@ Cost: one manager question before each agent turn the manager picks, plus each a
 
 ## Group chat in a chat
 
+![A group chat: Junie, an ACP agent, answers under its own name; the strip by the composer lists the members](../assets/readme/group-chat.png)
+
 In any chat of the Control UI (OpenClaw fork, `aiwb-groups` 0.2.0 or later):
 
 - **Add to group chat**, in the chat header and as a switch at the top of the **Hand off…** menu, adds an OpenClaw

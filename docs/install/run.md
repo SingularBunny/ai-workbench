@@ -51,5 +51,7 @@ itself after 2 hours, or press **Resume chats**. An official OpenClaw without ma
 waits for idle chats before the replacement as described above, and nothing pauses chats during setup.
 Maintenance can also be turned on by hand: account menu (bottom left) → **Pause chats (maintenance)**.
 
+![Maintenance banner in the Control UI: chats paused, Resume chats](../assets/readme/maintenance.png)
+
 Control UI — `http://127.0.0.1:18789`; the **Gateway secret** field takes `OPENCLAW_GATEWAY_TOKEN`
 from `~/.openclaw/.env`.

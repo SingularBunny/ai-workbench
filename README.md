@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme/chat-handoff.png" alt="A chat in the Control UI: replies named by their author, the Hand off menu with models and agents, the projects tree on the left" width="900">
+  <img src="docs/assets/readme/chat-handoff.png" alt="A chat in the Control UI: the model picker with local models and the Junie agent, a qwen3:32b is answering · Return to llama3.3:70b chip, a group chat strip, the projects tree on the left" width="900">
 </p>
 
 ## Why
@@ -113,10 +113,10 @@
 <table>
 <tr>
 <td width="50%"><img src="docs/assets/readme/group-chat.png" alt="A group chat: a model and the Junie agent answer under their own names"></td>
-<td width="50%"><img src="docs/assets/readme/projects-tree.png" alt="The projects tree with the folder menu: New chat in this folder, Open folder in file manager, Copy folder path"></td>
+<td width="50%"><img src="docs/assets/readme/projects-tree.png" alt="The projects tree with the folder menu: New chat in this folder, Agent settings, Collapse, Hide from sidebar"></td>
 </tr>
 <tr>
-<td align="center">Group chat: models and agents answer by name</td>
+<td align="center">Group chat: an ACP agent answers under its own name</td>
 <td align="center">Projects tree with the folder menu</td>
 </tr>
 </table>
