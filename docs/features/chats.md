@@ -14,6 +14,8 @@ its own sessions, and when restoring an interrupted turn it also creates chats t
 Folder order is `plugins.entries.aiwb-claude-bridge.config.order` (folder names top to bottom; unlisted ones
 come after, alphabetically); without it, alphabetical. Within a folder the newest chats are on top.
 
+![The Projects tree with the folder menu of the OpenClaw fork: New chat in this folder, Agent settings, Collapse, Hide from sidebar](../assets/readme/projects-tree.png)
+
 **Drag-and-drop** (OpenClaw from the fork): drag a folder by its header to reorder folders, and a chat within its
 folder to reorder chats. The order is kept by the plugin (`~/.openclaw/workbench/aiwb-claude-bridge-order.json`)
 and wins over `config.order`; in a folder you arranged, chats that get new activity afterwards (and new chats) go
