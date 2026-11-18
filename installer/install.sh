@@ -35,7 +35,7 @@ export PATH="$prefix/bin:$PATH"
 # cleaned, and a package that is no longer there is taken from these copies by its sha256 (rollback).
 if [[ -f "$prefix/.env" ]]; then
   while IFS='=' read -r k v; do
-    case "$k" in WORKBENCH_OPENCLAW_PACKAGE|WORKBENCH_OPENCLAW_PACKAGE_SHA256|WORKBENCH_BACKUP|WORKBENCH_PROXY_URL|WORKBENCH_PROXY_HOSTS) [[ -n "${!k:-}" ]] || export "$k=$v" ;; esac
+    case "$k" in WORKBENCH_OPENCLAW_PACKAGE|WORKBENCH_OPENCLAW_PACKAGE_SHA256|WORKBENCH_BACKUP|WORKBENCH_PROXY_URL|WORKBENCH_PROXY_HOSTS|WORKBENCH_MAINTENANCE_WAIT_MIN|WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC|WORKBENCH_DOCTOR_TIMEOUT_MIN|WORKBENCH_GATEWAY_START_MIN|WORKBENCH_INSTALL_CLI) [[ -n "${!k:-}" ]] || export "$k=$v" ;; esac
   done < "$prefix/.env"
 fi
 # Downloads of this script (install-cli.sh, an https:// fork package) follow the optional network proxy of .env:

@@ -148,6 +148,22 @@ The ACPX plugin (ACP agents: Claude CLI on a VM, Junie) from the same fork inste
 
 Maintenance during an install (a fork Gateway with gateway.maintenance): chats pause and the installer waits for running agent turns at most this many minutes before replacing OpenClaw (default 30); see [install/run.md](../install/run.md).
 
+### `WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC`
+
+Turning maintenance off at the end of an install whose Gateway does not answer (a failed upgrade): seconds to retry while the Gateway service is still starting (default 180); then the installer removes its own state file &lt;stateDir&gt;/gateway-maintenance.json, so chats run when the Gateway starts; see [install/run.md](../install/run.md).
+
+### `WORKBENCH_DOCTOR_TIMEOUT_MIN`
+
+Upgrade safety: a config the new OpenClaw rejects (retired keys) is repaired with `openclaw doctor --fix --non-interactive` before the Gateway starts; it may take this many minutes (default 20; it also migrates databases). See [install/run.md](../install/run.md)#upgrades.
+
+### `WORKBENCH_GATEWAY_START_MIN`
+
+How long the installer waits for the Gateway service to become healthy after a start (default 10 minutes: the first start of a new version migrates databases); a service that fails stops the install sooner.
+
+### `WORKBENCH_INSTALL_CLI`
+
+A local install-cli.sh instead of the download from openclaw.ai (offline installs, installer tests).
+
 ### `WORKBENCH_FORK_PRESETS`
 
 Presets of the OpenClaw fork (needs `WORKBENCH_OPENCLAW_PACKAGE`), comma-separated; set as env.vars settings, see [openclaw-fork.md](../openclaw-fork.md). worker-limits — wider worker queues (`OPENCLAW_WORKER_*`): otherwise the memory index with transcripts of large chats fails with "worker task capacity reached". catalog-owner — user messages imported from the catalog are marked as the owner's (`OPENCLAW_CATALOG_IMPORT_OWNER`): without the mark Dreaming and session-backfill skip them.
