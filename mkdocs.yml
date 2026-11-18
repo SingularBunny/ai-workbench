@@ -1,4 +1,5 @@
 site_name: ai-workbench
+site_url: https://singularbunny.github.io/ai-workbench/
 site_description: A local replacement for Claude Desktop built on OpenClaw
 docs_dir: docs
 strict: true
