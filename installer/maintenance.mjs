@@ -5,10 +5,16 @@
 //   node installer/maintenance.mjs enter [--wait-min N]   — turn on, wait for running turns (exit 0 ready,
 //                                                           2 no Gateway / not supported, 3 turns still running)
 //   node installer/maintenance.mjs ensure                 — turn on without waiting (after the restart)
-//   node installer/maintenance.mjs exit                   — turn off (exit 0 also when off or no Gateway)
+//   node installer/maintenance.mjs exit [--retry-sec N]   — turn off. A Gateway that is still starting is retried
+//                                                           (WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC, default 180 s);
+//                                                           one that is down or never answers: the installer's
+//                                                           state file <stateDir>/gateway-maintenance.json is removed
+//                                                           (exit 0 also when off; 1 when it could not be turned off)
 //
 // Functions take `call(method, params)` so installer/test/maintenance.test.mjs checks them without a Gateway.
 import { spawnSync } from "node:child_process";
+import { readFileSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +23,8 @@ export const MAINTENANCE_REASON = "OpenClaw update";
 /** A killed installer must not pause chats for ever: the Gateway ends maintenance on its own after this. */
 export const MAINTENANCE_TTL_MS = 2 * 60 * 60 * 1000;
 export const DEFAULT_WAIT_MIN = 30;
+export const DEFAULT_EXIT_WAIT_SEC = 180;
+export const MAINTENANCE_FILE = "gateway-maintenance.json";
 
 /** Result of `openclaw gateway call … --json`: the JSON after any banner lines. */
 export function parseCallOutput(code, out) {
@@ -74,6 +82,46 @@ export function exitMaintenance({ call = cliCall, log = console.log } = {}) {
   return { status: r.result?.resumed ? "resumed" : "already-off" };
 }
 
+/** Where the fork keeps the state: <stateDir>/gateway-maintenance.json (stateDir: OPENCLAW_STATE_DIR, else the config's folder). */
+export function maintenanceFilePath({ env = process.env, configPath = null, home = os.homedir() } = {}) {
+  const sd = env.OPENCLAW_STATE_DIR?.trim();
+  if (sd) return path.join(sd.startsWith("~") ? path.join(home, sd.slice(1)) : path.resolve(sd), MAINTENANCE_FILE);
+  return path.join(configPath ? path.dirname(configPath) : path.join(home, ".openclaw"), MAINTENANCE_FILE);
+}
+
+/** Removes the state file when the installer wrote it. Returns "cleared" | "absent" | "left" (another source's). */
+export function clearMaintenanceFile(file) {
+  let state;
+  try { state = JSON.parse(readFileSync(file, "utf8")); } catch (e) { if (e.code === "ENOENT") return { status: "absent" }; state = null; }
+  if (state && state.source && state.source !== MAINTENANCE_SOURCE) return { status: "left", source: state.source };
+  rmSync(file, { force: true });
+  return { status: "cleared" };
+}
+
+/**
+ * Maintenance must never outlive a failed install. Turns it off through the Gateway, retrying while the Gateway
+ * is expected to come up (bounded); a Gateway that is down or never answers: the state file is cleared directly,
+ * so the next Gateway start runs chats. Returns { status: "resumed" | "already-off" | "unsupported" | "cleared" |
+ * "absent" | "left" | "error" }.
+ */
+export async function exitMaintenanceSafely({ call = cliCall, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now,
+  retryMs = DEFAULT_EXIT_WAIT_SEC * 1000, pollMs = 5_000, gatewayExpected = () => false, file, clear = clearMaintenanceFile,
+  log = console.log } = {}) {
+  const started = now();
+  let shown = false, last;
+  for (;;) {
+    last = exitMaintenance({ call, log });
+    if (["resumed", "already-off", "unsupported"].includes(last.status)) return last;
+    if (now() - started >= retryMs || !gatewayExpected()) break;
+    if (!shown) { log("Gateway not reachable yet; retrying to turn maintenance mode off…"); shown = true; }
+    await sleep(pollMs);
+  }
+  if (!file) return last;
+  const c = clear(file);
+  if (c.status === "cleared") log(`Maintenance mode cleared in ${file}: chats run when the Gateway starts.`);
+  return c;
+}
+
 async function cli(argv) {
   const [cmd] = argv;
   const i = argv.indexOf("--wait-min");
@@ -91,9 +139,21 @@ async function cli(argv) {
     return 2;
   }
   if (cmd === "exit") {
-    const r = exitMaintenance();
-    if (r.status === "error") { console.error(`⚠ Maintenance mode not turned off: ${r.message}\n  Turn it off with the Resume chats button in the Control UI, or: openclaw gateway call gateway.maintenance.exit`); return 1; }
-    return 0;
+    const j = argv.indexOf("--retry-sec");
+    const sec = Number(j >= 0 ? argv[j + 1] : process.env.WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC ?? DEFAULT_EXIT_WAIT_SEC);
+    const { cliRun, parseGatewayStatus } = await import("./upgrade.mjs");
+    const gatewayExpected = () => {
+      const s = parseGatewayStatus(cliRun(["gateway", "status", "--json"], { timeout: 30_000 }).out);
+      return s.rpc || (s.loaded && !["failed", "inactive", "unknown"].includes(s.state));
+    };
+    const cf = cliRun(["config", "file"], { timeout: 30_000 }).out.trim().split("\n").filter((l) => l.startsWith("/")).at(-1) ?? null;
+    const file = maintenanceFilePath({ configPath: cf });
+    const r = await exitMaintenanceSafely({ retryMs: (Number.isFinite(sec) && sec >= 0 ? sec : DEFAULT_EXIT_WAIT_SEC) * 1000, gatewayExpected, file });
+    if (["resumed", "already-off", "unsupported", "cleared", "absent"].includes(r.status)) return 0;
+    console.error(`⚠ Maintenance mode not turned off${r.message ? `: ${r.message}` : r.source ? ` (it was turned on by ${r.source}, not the installer)` : ""}.`);
+    console.error("  When the Gateway runs: the Resume chats button in the Control UI, or openclaw gateway call gateway.maintenance.exit");
+    console.error(`  Gateway down: delete ${file}, then start it.`);
+    return 1;
   }
   console.error("usage: maintenance.mjs enter [--wait-min N] | ensure | exit");
   return 64;

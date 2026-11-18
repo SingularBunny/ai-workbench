@@ -71,6 +71,10 @@ fetch() {
     curl -fsSL --proto '=https' --tlsv1.2 --proxy "$WORKBENCH_PROXY_URL" "$src" -o "$out"
   fi
 }
+# WORKBENCH_INSTALL_CLI: a local install-cli.sh instead of the download (offline installs, installer tests).
+get_install_cli() {
+  if [[ -n "${WORKBENCH_INSTALL_CLI:-}" ]]; then cp "$WORKBENCH_INSTALL_CLI" "$1"; else fetch https://openclaw.ai/install-cli.sh "$1"; fi
+}
 # OpenClaw agents started by an IDE (`openclaw acp`, JetBrains AI Assistant) keep running the files of the
 # package they started from: after OpenClaw is replaced they must be restarted, the installer cannot do it.
 ide_agents() { ps -eo pid=,args= 2>/dev/null | awk '/openclaw/ { for (i = 3; i <= NF; i++) if ($i == "acp") { print $1; break } }' | paste -sd, -; }
@@ -124,19 +128,58 @@ const i = t.indexOf("{"); if (i < 0) process.exit(3); console.log(upcomingAutoma
 # durable channel messages stay queued, automations and heartbeats are deferred, config and plugin writes go on.
 # The state is on disk, so it survives the restart of the replacement; it ends on every exit of this script
 # (trap), and on its own after 2 hours if the script is killed. A Gateway without it: wait_gateway_idle as before.
+# If the Gateway cannot be reached at the end (a failed upgrade), `maint exit` retries while it is still starting and
+# then clears the installer's state file directly: a failed install never leaves chats paused.
 maintenance_on=0
-maint() {
-  local node_m; node_m="$(command -v node || find "$prefix" -maxdepth 5 -type f -path '*/bin/node' 2>/dev/null | head -1)"
-  [[ -x "$node_m" ]] && command -v openclaw >/dev/null || return 2
-  "$node_m" "$here/maintenance.mjs" "$@"
+run_node() {
+  local n; n="$(command -v node || find "$prefix" -maxdepth 5 -type f -path '*/bin/node' 2>/dev/null | head -1)"
+  [[ -x "$n" ]] && command -v openclaw >/dev/null || return 2
+  "$n" "$@"
 }
+maint() { run_node "$here/maintenance.mjs" "$@"; }
+upg() { run_node "$here/upgrade.mjs" "$@"; }
 resume_chats() {
   (( maintenance_on )) || return 0
   maintenance_on=0
   maint exit || true
 }
+# Upgrade safety (installer/upgrade.mjs). A Gateway service is stopped before OpenClaw is replaced and started by the
+# installer only after `openclaw config validate` passes for the new version: legacy keys a new version retired are
+# repaired by `openclaw doctor --fix --non-interactive` (openclaw.json backed up first). A config that stays invalid
+# leaves the Gateway stopped with restore steps, instead of a Gateway that crashes on start. After the start the
+# installer waits for the Gateway's health and runs no setup against a Gateway that is down.
+gw_stopped=0 gw_leave_down=0
+# rc 2 of upg: no Node or no openclaw to run the check with — nothing to check.
+wait_up() { local rc=0; upg wait-up || rc=$?; (( rc == 0 || rc == 2 )) && return 0; gw_leave_down=1; exit 1; }
+replace_openclaw() {   # $1: install-cli.sh, $2: its --version argument
+  local st; st="$(upg status 2>/dev/null)" || st=""
+  local loaded=0; [[ "${st%% *}" == 1 ]] && loaded=1
+  if (( loaded )); then
+    echo "Stopping the Gateway service for the replacement; it starts again once the config is checked for the new version…"
+    openclaw gateway stop >/dev/null 2>&1 || echo "⚠ openclaw gateway stop failed; continuing." >&2
+    gw_stopped=1
+  fi
+  bash "$1" --prefix "$prefix" --version "$2" --no-onboard --runtime-only
+  local rc=0; upg config-check || rc=$?
+  (( rc == 0 || rc == 2 )) || { gw_leave_down=1; exit 1; }
+  if (( loaded )); then
+    echo "Starting the Gateway service of the new OpenClaw…"
+    openclaw gateway install --force || openclaw gateway start || echo "⚠ the Gateway service did not start; checking…" >&2
+    gw_stopped=0
+    wait_up
+    gateway_checked=1
+  fi
+}
+# Exit in the middle of a replacement (download failed, Ctrl+C): the Gateway stopped for it starts again.
+restart_stopped_gateway() {
+  (( gw_stopped && ! gw_leave_down )) || return 0
+  gw_stopped=0
+  echo "Starting the Gateway service again (the install stopped before it finished)…" >&2
+  openclaw gateway start >/dev/null 2>&1 || echo "⚠ Start it: systemctl --user start openclaw-gateway (or openclaw gateway start)" >&2
+}
+gateway_checked=0
 cleanup_dirs=()
-on_exit() { resume_chats; (( ${#cleanup_dirs[@]} )) && rm -rf "${cleanup_dirs[@]}"; return 0; }
+on_exit() { restart_stopped_gateway; resume_chats; (( ${#cleanup_dirs[@]} )) && rm -rf "${cleanup_dirs[@]}"; return 0; }
 trap on_exit EXIT
 trap 'exit 130' INT TERM
 # Pauses chats and waits for running turns. $1: what follows, for the messages.
@@ -191,9 +234,9 @@ if (( ! uninstall )) && [[ -n "${WORKBENCH_OPENCLAW_PACKAGE:-}" ]]; then
     echo "Installing OpenClaw from the fork (sha256 $got) with the official install-cli.sh…"
     backup_before_replace
     ide_agents_note "and will keep the old OpenClaw files"
-    fetch https://openclaw.ai/install-cli.sh "$ptmp/install-cli.sh"
+    get_install_cli "$ptmp/install-cli.sh"
     echo "install-cli.sh sha256: $( (sha256sum "$ptmp/install-cli.sh" 2>/dev/null || shasum -a 256 "$ptmp/install-cli.sh") | cut -d' ' -f1)"
-    bash "$ptmp/install-cli.sh" --prefix "$prefix" --version "$ptmp/openclaw.tgz" --no-onboard
+    replace_openclaw "$ptmp/install-cli.sh" "$ptmp/openclaw.tgz"
     mkdir -p "$(dirname "$mark")" && echo "$want" > "$mark"
     if [[ ! -f "$kept" || "$(sha "$kept")" != "$want" ]]; then
       [[ -f "$kept" ]] && mv -f "$kept" "$previous"
@@ -239,10 +282,10 @@ else
   backup_before_replace
   ide_agents_note "and will keep the old OpenClaw files"
   tmp="$(mktemp -d)"; cleanup_dirs+=("$tmp")
-  fetch https://openclaw.ai/install-cli.sh "$tmp/install-cli.sh"
+  get_install_cli "$tmp/install-cli.sh"
   # Download to a file, not `| bash`: an interrupted download will not run half a script.
   echo "install-cli.sh sha256: $( (sha256sum "$tmp/install-cli.sh" 2>/dev/null || shasum -a 256 "$tmp/install-cli.sh") | cut -d' ' -f1)"
-  bash "$tmp/install-cli.sh" --prefix "$prefix" --version "$version" --no-onboard
+  replace_openclaw "$tmp/install-cli.sh" "$version"
   ide_agents_note "with the replaced OpenClaw files"
   # Now the official package: patches and settings treat it as such. The kept fork copies stay for a return.
   rm -f "$fork_mark"
@@ -253,14 +296,11 @@ if ! command -v openclaw >/dev/null; then
   (( dry )) && exit 0 || exit 1
 fi
 
-# The official install-cli.sh restarts a Gateway that runs as a service. Settings below go through it,
-# and during startup it refuses them ("admission closed"): wait until it is ready (at most 3 minutes).
-if (( ! dry )) && openclaw gateway status --json 2>/dev/null | grep -q '"loaded": *true'; then
-  for _ in $(seq 1 90); do
-    h="$(openclaw health 2>&1 || true)"
-    [[ "$h" == *"Agents:"* && "$h" != *"still starting"* ]] && break
-    sleep 2
-  done
+# Settings below go through a Gateway that runs as a service, and during startup it refuses them ("admission
+# closed"): wait until it is ready (WORKBENCH_GATEWAY_START_MIN, default 10). A Gateway service that failed or does
+# not come up: the install stops here with its journal and fix steps, setup is not run against it.
+if (( ! dry && ! gateway_checked )); then
+  wait_up
 fi
 
 # Node: the system one if suitable, otherwise the private one from the OpenClaw prefix.

@@ -67,7 +67,7 @@ function runInstall({ setupExit = 0, gateway = "fork", busy = false } = {}) {
     mkdirSync(inst, { recursive: true });
     mkdirSync(path.join(dir, "repo", "openclaw"));
     copyFileSync(path.join(here, "..", "install.sh"), path.join(inst, "install.sh"));
-    copyFileSync(path.join(here, "..", "maintenance.mjs"), path.join(inst, "maintenance.mjs"));
+    for (const f of ["maintenance.mjs", "upgrade.mjs"]) copyFileSync(path.join(here, "..", f), path.join(inst, f));
     copyFileSync(path.join(here, "..", "..", "openclaw", "workbench.config.mjs"), path.join(dir, "repo", "openclaw", "workbench.config.mjs"));
     const log = path.join(dir, "calls.log");
     writeFileSync(path.join(inst, "setup.mjs"), `import { appendFileSync } from "node:fs";
