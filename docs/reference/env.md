@@ -144,6 +144,10 @@ OpenClaw from your own fork instead of the pinned version: an npm package (.tgz 
 
 The ACPX plugin (ACP agents: Claude CLI on a VM, Junie) from the same fork instead of npm: an npm-pack .tgz (a path) and its sha256 (required). tools/openclaw-fork-build.sh builds it next to the OpenClaw package, from the same commit (openclaw-acpx-&lt;version&gt;-&lt;commit&gt;.tgz); see [openclaw-fork.md](../openclaw-fork.md). Used only when acpx is installed at all (`WORKBENCH_VM_SSH` or `WORKBENCH_JUNIE`); unset — npm again.
 
+### `WORKBENCH_MAINTENANCE_WAIT_MIN`
+
+Maintenance during an install (a fork Gateway with gateway.maintenance): chats pause and the installer waits for running agent turns at most this many minutes before replacing OpenClaw (default 30); see [install/run.md](../install/run.md).
+
 ### `WORKBENCH_FORK_PRESETS`
 
 Presets of the OpenClaw fork (needs `WORKBENCH_OPENCLAW_PACKAGE`), comma-separated; set as env.vars settings, see [openclaw-fork.md](../openclaw-fork.md). worker-limits — wider worker queues (`OPENCLAW_WORKER_*`): otherwise the memory index with transcripts of large chats fails with "worker task capacity reached". catalog-owner — user messages imported from the catalog are marked as the owner's (`OPENCLAW_CATALOG_IMPORT_OWNER`): without the mark Dreaming and session-backfill skip them.
