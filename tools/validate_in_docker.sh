@@ -28,6 +28,11 @@
 #     --reinstall  — after the check: reinstall, uninstall by manifest, install again
 #                    after uninstall (tools/container_check_reinstall.sh); then an install with the
 #                    plugin layout before the rename and the current one over it (container_check_migration.sh)
+#     --upgrade-from <.tgz> — UPGRADE scenario instead of the main check (needs --openclaw-package, the new one): a
+#                    container with systemd and the Gateway as a user service, install.sh with this OLD OpenClaw
+#                    package, a config key the new version retired (agents.defaults.heartbeat), then install.sh with
+#                    the new package: the Gateway must come up healthy, the key repaired, maintenance off; then a
+#                    Gateway that cannot start must stop the install before setup (tools/container_check_upgrade.sh)
 #     --live-model <model> — the scenario on a real model, without Claude (tools/live_model_check.py); an OpenRouter
 #                    id, or groq/<id> for Groq (GROQ_API_KEY; its free tier allows far more requests a day):
 #                    chat, knowledge base, memory, a docx attachment, a scheduled task, a project agent, the judge.
@@ -40,7 +45,7 @@
 #                    makes it reachable from the container, which gets it as HTTPS_PROXY for the check's duration
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-keep=0; clean=0; matrix=0; distro=debian; public=0; reinstall=0; profile_git=""; oc_package=""; acpx_package=""
+keep=0; clean=0; matrix=0; distro=debian; public=0; reinstall=0; profile_git=""; oc_package=""; acpx_package=""; upgrade_from=""
 live_model=""; live_judge="google/gemma-4-31b-it:free"; live_proxy=""
 profile="${WORKBENCH_PROFILE:-}"
 args=("$@")
@@ -54,6 +59,7 @@ for ((i=0; i<${#args[@]}; i++)); do
     --profile-git) profile_git="${args[i+1]:-}"; i=$((i+1)) ;;
     --openclaw-package) oc_package="$(realpath "${args[i+1]:-}")"; i=$((i+1)) ;;
     --acpx-package) acpx_package="$(realpath "${args[i+1]:-}")"; i=$((i+1)) ;;
+    --upgrade-from) upgrade_from="$(realpath "${args[i+1]:-}")"; i=$((i+1)) ;;
     --live-model) live_model="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-judge) live_judge="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-proxy) live_proxy="${args[i+1]:-}"; i=$((i+1)) ;;
@@ -99,6 +105,10 @@ oc_sha=""
 if [[ -n "$oc_package" ]]; then
   [[ -f "$oc_package" ]] || { echo "no package $oc_package" >&2; exit 1; }
   mounts+=(-v "$oc_package:/mnt/openclaw.tgz:ro"); oc_sha="$(sha256sum "$oc_package" | cut -d' ' -f1)"
+fi
+if [[ -n "$upgrade_from" ]]; then
+  [[ -f "$upgrade_from" && -n "$oc_package" ]] || { echo "--upgrade-from needs an existing old package and --openclaw-package (the new one)" >&2; exit 1; }
+  mounts+=(-v "$upgrade_from:/mnt/openclaw-old.tgz:ro")
 fi
 # ACPX from the fork: the same way, installed by the installer instead of the npm one (WORKBENCH_ACPX_PACKAGE).
 acpx_sha=""
@@ -243,7 +253,38 @@ run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   { echo "IMAGE=${IMAGE[$d]} $(docker image inspect -f '{{index .RepoDigests 0}}' "${IMAGE[$d]}" 2>/dev/null)"
-    docker run --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
+    docker run --cpus=4 --restart=no --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
+  } >"$out/install.log" 2>&1
+  (( keep )) || docker rm -f "$name" >/dev/null 2>&1
+}
+
+# UPGRADE scenario: systemd is PID 1 so the Gateway runs as a systemd user service, as on a workstation (the
+# failure it guards against is a service that crashes on start after an upgrade). Debian only.
+run_upgrade() {
+  local name="aiwb-upgrade-check" out="$out_root/upgrade$suffix" uid; uid="$(id -u)"
+  mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
+  {
+    echo "IMAGE=${IMAGE[debian]} old=$(basename "$upgrade_from") new=$(basename "$oc_package")"
+    docker run -d --cpus=4 --restart=no --name "$name" --cgroupns=private --tmpfs /run --tmpfs /run/lock \
+      -e HOST_UID="$uid" "${mounts[@]}" -v "$out:/out" "${IMAGE[debian]}" bash -c "
+        ${PREP[debian]%% && apt-get install -y -qq --no-install-recommends libreoffice*} && apt-get install -y -qq --no-install-recommends systemd systemd-sysv dbus dbus-user-session >/dev/null || echo PREP_FAILED
+        getent passwd $uid | cut -d: -f1 | xargs -r userdel -r 2>/dev/null
+        useradd -m -u $uid -d /home/tester -s /bin/bash tester
+        mkdir -p /var/lib/systemd/linger && touch /var/lib/systemd/linger/tester
+        exec /lib/systemd/systemd" >/dev/null
+    for _ in $(seq 1 120); do docker exec "$name" test -S "/run/user/$uid/bus" 2>/dev/null && break; sleep 3; done
+    docker exec "$name" test -S "/run/user/$uid/bus" || echo "PREP_FAILED (no systemd user session)"
+    docker exec "$name" bash -c '
+      mkdir -p /home/tester/bin && printf "#!/bin/sh
+echo "claude stub: not executed" >&2; exit 0
+" > /home/tester/bin/claude && chmod +x /home/tester/bin/claude
+      mkdir -p -m 700 /home/tester/.openclaw && printf "GRAFANA_URL=http://127.0.0.1:3000
+OPENROUTER_API_KEY=dummy-validate-only
+" > /home/tester/.openclaw/.env
+      chown -R tester /home/tester; su - tester -c "git config --global --add safe.directory "*""'
+    docker exec -u tester -e HOME=/home/tester -e XDG_RUNTIME_DIR="/run/user/$uid" -e DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+      "$name" bash /opt/ai-workbench/tools/container_check_upgrade.sh "$install_args"
+    docker exec "$name" bash -c 'cp /tmp/*.log /out/ 2>/dev/null; true'
   } >"$out/install.log" 2>&1
   (( keep )) || docker rm -f "$name" >/dev/null 2>&1
 }
@@ -267,6 +308,14 @@ red_total=0
 # One summary cell: ok if the marker line is present and its code is zero.
 cell() { local v; v=$(grep -oE "$2=[0-9]+" "$1" | tail -1 | cut -d= -f2); [[ "$v" == 0 ]] && echo ok || echo "✗${v:+ $v}"; }
 
+if [[ -n "$upgrade_from" ]]; then
+  echo "== UPGRADE (debian, systemd): $(basename "$upgrade_from") → $(basename "$oc_package"), $build (log: $out_root/upgrade$suffix/install.log)"
+  run_upgrade
+  l="$out_root/upgrade$suffix/install.log"
+  grep -vE "^\s*$" "$l" | tail -60
+  verdict "$l" upgrade; echo "RESULT total: $? red"
+  exit "$(grep -cE '^UPGRADE_[A-Z_]+=[1-9]|PREP_FAILED' "$l")"
+fi
 if (( matrix )); then
   echo "== Linux matrix: ${DISTROS[*]}, $( (( clean )) && echo 'clean machine' || echo 'developer machine'), $build, in parallel"
   for d in "${DISTROS[@]}"; do run_linux "$d" & done; wait
