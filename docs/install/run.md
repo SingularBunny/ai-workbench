@@ -68,7 +68,9 @@ finds one refuses to start ("OpenClaw config is invalid … Unrecognized key …
 exit code 78), and systemd leaves the service failed. The installer guards against that when it replaces
 OpenClaw:
 
-1. the Gateway service is stopped, OpenClaw is replaced (`install-cli.sh --runtime-only`: no service restart);
+1. the Gateway service is stopped (`openclaw gateway stop --force`, checked; a service that does not stop ends
+   the install before anything is replaced), then OpenClaw is replaced (`install-cli.sh --runtime-only`: no
+   service restart). A running old Gateway is not left to notice its replaced files and restart itself;
 2. `openclaw config validate`. If the new version rejects the config, `openclaw.json` is copied to
    `openclaw.json.pre-upgrade-<date>-<time>` and `openclaw doctor --fix --non-interactive` repairs it (for
    example, the old heartbeat becomes an automation `heartbeat-main`). Doctor runs with
@@ -79,8 +81,10 @@ OpenClaw:
 3. still invalid: the install stops here with the keys at fault and the backup to restore. **The Gateway stays
    stopped** — with that config it would only crash;
 4. valid: the service is started (`openclaw gateway install --force`) and the installer waits for its health, up
-   to 10 minutes (`WORKBENCH_GATEWAY_START_MIN`; the first start migrates databases). A service that fails, or
-   does not become healthy in time, stops the install: the last 40 lines of its journal and the fix steps are
+   to 10 minutes (`WORKBENCH_GATEWAY_START_MIN`; the first start migrates databases). A new version can also
+   refuse to start until doctor upgrades an agent database ("uses schema version … run openclaw doctor --fix"):
+   after a failed start the installer runs doctor once more and starts the service again. A service that still
+   fails, or does not become healthy in time, stops the install: the last 40 lines of its journal and the fix steps are
    printed, and setup is **not** run against a Gateway that is down.
 
 In every failed case maintenance mode is turned off (see above), so chats do not stay paused.
