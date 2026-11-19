@@ -78,6 +78,9 @@ export function settings(ctx) {
   // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them. Only with the fork:
   // the official build's anthropic plugin rejects unknown keys.
   if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.managedTurns", false]);
+  // A chat keeps its Claude Code process for a workday (fork): upstream closes an idle one after 10 minutes, and each
+  // new process opens a new Claude in Chrome tab group; Claude Desktop keeps one group per chat.
+  if (ctx.env.WORKBENCH_OPENCLAW_PACKAGE) out.push(["plugins.entries.anthropic.config.liveSessionIdleMinutes", 480]);
   // A chat that switches models keeps one conversation (fork F72): back on Claude CLI, Claude gets the turns other
   // models and agents wrote, also in a fresh Claude session with its own CLI login (one owner, no API key to check).
   // The turn count is bounded by the history character budget, not by the upstream 8.
