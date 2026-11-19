@@ -67,6 +67,13 @@ export function settings(ctx) {
   // lets a plugin pick the model only with this opt-in (docs plugins/sdk-runtime/models.md).
   out.push(["plugins.entries.aiwb-compare.llm.allowModelOverride", true]);
 
+  // Agents work with each other's chats (docs/features/chats.md#agents-managing-chats): agents_list lists every agent
+  // with its name, and sessions_spawn may target any of them (docs concepts/session-tool.md). Without it an agent sees
+  // only itself and starts a requested chat "in agent Claude" in its own agent. WORKBENCH_AGENT_TARGETS narrows the
+  // list (comma-separated ids) or turns it off (`self`).
+  const targets = (ctx.env.WORKBENCH_AGENT_TARGETS || "*").split(",").map((t) => t.trim()).filter(Boolean);
+  if (!(targets.length === 1 && targets[0] === "self")) out.push(["agents.defaults.subagents.allowAgents", targets]);
+
   // Claude CLI turns stay unmanaged (fork F62): since 2026.11 OpenClaw runs them without Claude Code's own tools,
   // skills, plugins, slash commands and Chrome; the workbench's Claude CLI features need them. Only with the fork:
   // the official build's anthropic plugin rejects unknown keys.

@@ -141,6 +141,20 @@ existing install to the new id: the config and hooks of `plugins.entries.aiwb-pr
 `plugins.allow`/`deny`; the plugin moves its files `~/.openclaw/workbench/aiwb-projects-*.json` to
 `aiwb-claude-bridge-*.json` when it starts. The section stays "Projects" (catalog id `projects`).
 
+## Agents managing chats
+
+An agent can work with chats on its own when asked: "start a chat in agent Claude with this prompt", "send this to
+the reports chat", "what did the other chat answer". It uses OpenClaw's session tools
+([Session tools](https://docs.openclaw.ai/concepts/session-tool)): `sessions_create` starts a chat, in any agent, with
+a first message; `sessions_send` sends to an existing chat and can wait for its answer; `sessions_list`,
+`sessions_history` and `sessions_search` find chats and read them; `sessions` renames, pins, groups and archives.
+`agents_list` lists the agents with the names shown in the sidebar, and an agent may be named either way
+(`Claude` or its id `main`). Chats are created as you, the owner of the chat that asked.
+
+The installer lets every agent see and target every other one (`WORKBENCH_AGENT_TARGETS`, all by default; OpenClaw
+alone keeps each agent to itself). With the OpenClaw fork, a name instead of an id is resolved, and an unknown agent is
+answered with the list of agents, so the model can pick the right one.
+
 ## As OpenClaw sessions
 
 **As OpenClaw sessions**, so that an old chat opens in the Control UI under its project's agent.
