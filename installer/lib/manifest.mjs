@@ -53,14 +53,21 @@ export function mergeManifest(prev, { config, plugins, ide = {}, links = {}, tim
 
 /** `openclaw config get <key> --json` output → the key's previous state; unparseable output is an error, not "absent". */
 export function configBefore(code, out) {
-  if (code === 0) {
-    let value;
-    try { value = JSON.parse(out.trim()); } catch { throw new Error(`config get: not JSON: ${out.slice(0, 120)}`); }
+  const text = String(out ?? "").trim();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { parsed = undefined; }
+  // `--json` reports a failure as {"ok": false, "error": {"message": …}}, with any exit code.
+  const failure = parsed && typeof parsed === "object" && parsed.ok === false && parsed.error
+    ? String(parsed.error.message ?? parsed.error) : undefined;
+  if (code === 0 && failure === undefined) {
+    if (parsed === undefined) throw new Error(`config get: not JSON: ${text.slice(0, 120)}`);
     // A sensitive key (proxy.proxyUrl, tokens) comes back masked: its previous value is unknown.
-    return value === "__OPENCLAW_REDACTED__" ? { masked: true } : { value };
+    return parsed === "__OPENCLAW_REDACTED__" ? { masked: true } : { value: parsed };
   }
-  if (/valid but unset|Config path not found|Config file not found/i.test(out)) return { absent: true };
-  throw new Error(`config get: ${out.trim().split("\n").slice(-1)[0].slice(0, 200)}`);
+  const message = failure ?? text;
+  // "Unknown config path": an older OpenClaw has no such key yet, so it had no value.
+  if (/valid but unset|Config path not found|Config file not found|Unknown config path/i.test(message)) return { absent: true };
+  throw new Error(`config get: ${message.split("\n").slice(-1)[0].slice(0, 200)}`);
 }
 
 /**

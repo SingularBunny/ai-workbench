@@ -122,7 +122,7 @@ function recordManifest(plan) {
   const config = {};
   for (const key of t.config.filter((k) => !prev || !(k in prev.config))) {
     const r = openclaw(["config", "get", key, "--json"], { capture: true });
-    config[key] = configBefore(r.code, r.out);
+    try { config[key] = configBefore(r.code, r.out); } catch (e) { throw new Error(`${key}: ${e.message}`); }
   }
   const plugins = {};
   const fresh = t.plugins.filter((id) => !prev || !(id in prev.plugins));

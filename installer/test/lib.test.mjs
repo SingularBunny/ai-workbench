@@ -368,6 +368,12 @@ test("previous key state: value, absent, and an error on unclear output", () => 
   assert.deepEqual(configBefore(1, "Config path not found: nope.key. Nothing was changed."), { absent: true });
   assert.throws(() => configBefore(1, "Gateway not reachable"), /config get/);
   assert.throws(() => configBefore(0, "not json"), /not JSON/);
+  // `--json` failures come as a JSON envelope, whatever the exit code; its message decides.
+  const envelope = (message) => JSON.stringify({ ok: false, error: { type: "cli_error", message } }, null, 2);
+  assert.deepEqual(configBefore(0, envelope("Config path is valid but unset: env.vars.FOO.")), { absent: true });
+  assert.deepEqual(configBefore(1, envelope("Config path not found: nope.key.")), { absent: true });
+  assert.deepEqual(configBefore(1, envelope("Unknown config path: plugins.entries.x.config.y. Run openclaw config schema to inspect valid paths.")), { absent: true });
+  assert.throws(() => configBefore(1, envelope("Gateway not reachable")), /config get: Gateway not reachable/);
 });
 
 test("uninstall plan: our plugins get uninstall, others are left; keys get the previous value or unset, nested first", () => {
