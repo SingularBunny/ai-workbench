@@ -35,7 +35,7 @@ What happens:
    installed from git at its pinned commit is kept as is ("keep plugin … already at the pinned commit"): a
    reinstall would clone the same commit again.
 5. **ai-workbench plugins** (judge, Claude Desktop & Code bridge, shared memory, fork settings status, document preview,
-   scheduled-tasks MCP) — from the [aiwb-plugins](https://github.com/SingularBunny/aiwb-plugins)
+   multi-model compare, groups, plan mode, GPU use, scheduled-tasks MCP) — from the [aiwb-plugins](https://github.com/SingularBunny/aiwb-plugins)
    repository: cloned next to your own plugins (`--plugins-root`) and connected with `--link`.
    **Your own plugins come from your own repositories.** If the folder is missing, it is cloned
    with `git clone` from origin (`REPOS` in the profile); if a clone exists, it is connected with

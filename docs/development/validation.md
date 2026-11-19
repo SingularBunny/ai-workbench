@@ -11,7 +11,10 @@ tools/validate_in_docker.sh --public          # public build without a profile, 
 tools/validate_in_docker.sh --reinstall       # plus a rerun, uninstall, and install after uninstall
 ```
 
-With a fork package — `--openclaw-package <.tgz>` ([OpenClaw from a fork](../openclaw-fork.md)).
+With a fork package — `--openclaw-package <.tgz>` ([OpenClaw from a fork](../openclaw-fork.md)), with ACPX from the
+fork — `--acpx-package <.tgz>`. Other options: `--keep` leaves the container for inspection; `--profile <dir>` takes a
+personal profile (`$WORKBENCH_PROFILE` by default); `--profile-git <dir>` installs the profile from git, as on a new
+machine. The per-feature checks it runs are `tools/container_check_*.sh`; each prints its own markers.
 
 **Without Claude, on a real model:** `--live-model <OpenRouter id>` (for example
 `nvidia/nemotron-3-ultra-550b-a55b:free`) makes the model the default and, after the usual checks, runs

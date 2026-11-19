@@ -153,7 +153,8 @@ export const LLAMA_CPP_VULKAN = {
 };
 
 // Where plugins are downloaded from. The public build uses only the ai-workbench plugins repository
-// (judge, projects, shared memory, fork settings, document preview, scheduled-tasks MCP); other own
+// (judge, Claude Desktop & Code bridge, shared memory, fork settings, document preview, multi-model compare,
+// groups, plan mode, GPU use, scheduled-tasks MCP); other own
 // repositories are added by the profile. Entry format: { dir, repo }, see installer/lib.mjs, repoSteps.
 export const PLUGINS_REPO = { dir: "aiwb-plugins", repo: "https://github.com/SingularBunny/aiwb-plugins.git" };
 export const REPOS = [PLUGINS_REPO];

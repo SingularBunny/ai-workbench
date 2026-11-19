@@ -9,6 +9,14 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Safe OpenClaw upgrades ([Upgrades](docs/install/run.md#upgrades)): the installer pauses chats in Gateway maintenance
+  mode for the whole install and never leaves it on; before the restart it stops the Gateway (`gateway stop --force`,
+  verified), runs `config validate` and repairs retired keys with `doctor --fix --non-interactive` (backup
+  `openclaw.json.pre-upgrade-*`), retries the repair once after a failed start and waits for a healthy Gateway before
+  setup. New variables `WORKBENCH_MAINTENANCE_WAIT_MIN`, `WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC`,
+  `WORKBENCH_DOCTOR_TIMEOUT_MIN`, `WORKBENCH_GATEWAY_START_MIN`. The Docker check `--upgrade-from` installs an old fork
+  package with a legacy key and a dead Gateway, then upgrades over it. Linux and macOS (`install.sh`) only.
+- Documentation site on GitHub Pages (MkDocs).
 - Group chat in a chat (OpenClaw fork, `aiwb-groups` 0.2.0): agents, ACP agents and models added to any chat answer
   when named (`@Junie …`, **Ask Junie**), their replies in the chat under their own name
   ([Groups](docs/features/groups.md#group-chat-in-a-chat)). The Docker check `tools/container_check_groups.sh` adds the

@@ -34,7 +34,7 @@ installer adds a systemd drop-in so that systemd does not kill the Gateway soone
 example `OPENCLAW_MEMORY_INDEX_ON_START`), so after an install that adds them, restart the service once more.
 Do not also run `openclaw gateway run` while the service is active.
 
-**Maintenance during an install.** With the OpenClaw fork (`gateway.maintenance.*`) the installer puts the
+**Maintenance during an install** (`install.sh` on Linux and macOS; `install.ps1` does not pause chats). With the OpenClaw fork (`gateway.maintenance.*`) the installer puts the
 Gateway into maintenance mode before it replaces OpenClaw and keeps it there through the restart and the whole
 setup; it turns it off when setup ends, also when setup fails or the install is stopped (Ctrl+C). Meanwhile no
 chat turn starts:
@@ -62,6 +62,8 @@ Control UI — `http://127.0.0.1:18789`; the **Gateway secret** field takes `OPE
 from `~/.openclaw/.env`.
 
 ## Upgrades
+
+Linux and macOS (`install.sh`) only: `install.ps1` does not stop the Gateway, validate or repair the config.
 
 A new OpenClaw version can retire config keys (2026.11.5 retired `agents.defaults.heartbeat`); a Gateway that
 finds one refuses to start ("OpenClaw config is invalid … Unrecognized key … run `openclaw doctor --fix`",

@@ -162,7 +162,7 @@ git clone https://github.com/SingularBunny/ai-workbench.git && cd ai-workbench
 installer/install.sh --dry-run          # what will be installed; changes nothing
 installer/install.sh                    # shows the same plan and waits for y
 $EDITOR ~/.openclaw/.env                # add a key, e.g. OPENROUTER_API_KEY=…
-openclaw gateway run                    # then open http://127.0.0.1:18789
+openclaw gateway run                    # then open http://127.0.0.1:18789 (new shell: ~/.openclaw/bin/openclaw)
 ```
 
 Paste `OPENCLAW_GATEWAY_TOKEN` from `~/.openclaw/.env` into the **Gateway secret** field and write a message.
@@ -171,7 +171,7 @@ Step by step, with a Claude subscription instead of a key, and as a service:
 Windows: `powershell -ExecutionPolicy Bypass -File installer\install.ps1`.
 
 With the fork: put `WORKBENCH_OPENCLAW_PACKAGE` and `WORKBENCH_OPENCLAW_PACKAGE_SHA256` from the fork's
-[releases page](https://github.com/SingularBunny/openclaw/releases) into `~/.openclaw/.env` and re-run the installer —
+[releases page](https://github.com/SingularBunny/openclaw/releases) (take the release whose version matches `OPENCLAW_VERSION` in `openclaw/workbench.config.mjs`) into `~/.openclaw/.env` and re-run the installer —
 [OpenClaw from a fork](docs/openclaw-fork.md).
 
 ## How it fits together

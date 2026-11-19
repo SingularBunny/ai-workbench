@@ -38,7 +38,7 @@ Latin letters in Russian sounds. `WORKBENCH_TTS_SPEAKER` picks the voice: `xenia
 is kept. Check it from the command line:
 
 ```bash
-openclaw gateway call talk.speak --params '{"text":"Проверка связи"}' --json
+openclaw gateway call talk.speak --params '{"text":"Testing, one two three"}' --json
 ```
 
 The Silero models are free for personal and non-commercial use

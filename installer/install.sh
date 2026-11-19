@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ai-workbench installer for Linux, macOS and WSL.
 #   1. OpenClaw at the pinned version via the official install-cli.sh: Node and CLI in ~/.openclaw,
-#      no root and no system packages (docs/install/installer.md). Skipped if the right version
+#      no root and no system packages (OpenClaw's docs/install/installer.md). Skipped if the right version
 #      is already installed. With WORKBENCH_OPENCLAW_PACKAGE, the fork package is installed instead;
 #      without it, an installed fork is replaced with the official version after a question.
 #   2. installer/setup.mjs: config, plugins with dependencies, checks. Shows the install plan

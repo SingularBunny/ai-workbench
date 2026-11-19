@@ -3,7 +3,7 @@
 Linux, macOS: `WORKBENCH_OPENCLAW_PACKAGE` — an npm package (`.tgz`, a path or `https://`),
 `WORKBENCH_OPENCLAW_PACKAGE_SHA256` — its sha256 (required; on mismatch the package is not
 installed). Ready packages are on the fork's
-[releases page](https://github.com/SingularBunny/openclaw/releases): each release names both values. They
+[releases page](https://github.com/SingularBunny/openclaw/releases) (take the release whose version matches `OPENCLAW_VERSION` in `openclaw/workbench.config.mjs`): each release names both values. They
 are built on GitHub-hosted runners with signed build provenance; to check that a package was built there
 from the fork's commit, run `gh attestation verify <file>.tgz -R SingularBunny/openclaw`. The same `install-cli.sh` installs it (`--version <package>`) instead of the pinned
 version; the same package is not reinstalled. To build the fork package, run

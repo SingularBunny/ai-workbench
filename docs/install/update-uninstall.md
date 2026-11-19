@@ -1,11 +1,12 @@
 # Update and uninstall
 
-**Running it again is an update.** Run the same `installer/install.sh` over an existing install:
+**Running it again is an update.** Pull the new version first (`git pull`), then run the same `installer/install.sh` over an existing install:
 the marketplace moves to the pinned commit, plugins are reinstalled (`--force`), and settings are
 written again — if nothing changed, OpenClaw replies "No change". Your edits to keys that the build
 sets are overwritten on a rerun; keys the build does not touch are left alone. Old MCP versions are
 removed after an update. Plugins renamed since the previous install are moved to their new ids (see
 [Installation](index.md), step 5), and the manifest of an older install is read under the new ids.
+When OpenClaw itself is replaced (a new version or fork package), see [Upgrades](run.md#upgrades).
 
 **Uninstall** — restore the config and plugins to what they were before ai-workbench:
 

@@ -51,8 +51,7 @@ not in the bridge's `projects`, or that agent was not created) goes to the defau
 - a chat nobody has written in since the import moves to that agent by itself, at the next import pass (about half
   a minute after the settings change): same title, pin and read state, whole history; its session under `main` is
   archived;
-- a chat used under `main` stays there, and its ⋯ menu offers **Move to project &lt;folder&gt;…** (in Russian
-  «Перенести в проект …»). After a confirmation it moves like a dragged chat, with the turns made under `main`;
+- a chat used under `main` stays there, and its ⋯ menu offers **Move to project &lt;folder&gt;…**. After a confirmation it moves like a dragged chat, with the turns made under `main`;
 - archived and deleted chats stay as they are.
 
 "Nobody has written" is read from the session record: no user or channel message (`lastInteractionAt`), no turn

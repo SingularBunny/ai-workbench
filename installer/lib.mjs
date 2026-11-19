@@ -622,7 +622,7 @@ export function projectSteps(projects) {
 /**
  * Shared memory: the main agent's workspace lives in the data repository, and its memory/ is
  * searched by memory_search of all agents (memory.search.extraPaths for shared notes, docs reference/memory-config.md).
- * The profile sets the whole extraPaths list. No evergreen: OpenClaw 2026.10.10 does not know it.
+ * The profile sets the whole extraPaths list. No evergreen yet: OpenClaw 2026.10.10 rejected it; 2026.11.x accepts it (memorySearch extraPaths evergreen).
  */
 export function mainSteps({ dir, sharedSearch = true, knowledge }) {
   return [
