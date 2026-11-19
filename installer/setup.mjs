@@ -734,6 +734,12 @@ async function main() {
     if (step.tolerant && r.code !== 0) { console.log(`  nothing to remove: ${r.out.trim().split("\n").slice(-1)[0] || `exit code ${r.code}`}`); continue; }
     // An optional plugin that did not install (its source not reachable from here) is a warning, not an error.
     if (step.optional && r.code !== 0) { console.log(`  ⚠ ${step.id} not installed (exit code ${r.code}): ${step.optional}`); continue; }
+    // A setting the installed OpenClaw does not know yet (a fork package older than this installer): the rest of the
+    // install goes on, and the setting applies once OpenClaw is updated.
+    if (step.kind === "config" && r.code !== 0 && /must not have additional properties|Unknown config path/i.test(r.out)) {
+      console.log(`  ⚠ ${step.id}: this OpenClaw does not know the setting yet; update OpenClaw (WORKBENCH_OPENCLAW_PACKAGE) and re-run the installer`);
+      continue;
+    }
     if (r.code !== 0 || mismatch) {
       failed++;
       // A failure of the base plugin itself (network, cloning its source) does not taint the marketplace: other base plugins still install.
