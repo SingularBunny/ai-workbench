@@ -90,7 +90,7 @@ IMAGE[debian]=debian:trixie-slim;  PREP[debian]="apt-get update -qq && apt-get i
 IMAGE[ubuntu-24.04]=ubuntu:24.04;  PREP[ubuntu-24.04]="${PREP[debian]}"
 IMAGE[ubuntu-26.04]=ubuntu:26.04;  PREP[ubuntu-26.04]="${PREP[debian]}"
 IMAGE[fedora]=fedora:45;           PREP[fedora]="dnf install -y -q git python3 procps-ng util-linux shadow-utils >/dev/null"
-IMAGE[arch]=archlinux:base;        PREP[arch]="pacman -Sy --noconfirm --needed -q git python >/dev/null"
+IMAGE[arch]=archlinux:base;        PREP[arch]="pacman -Syu --noconfirm --needed -q git python >/dev/null"
 # Document preview (aiwb-plugins/office) runs on a machine with LibreOffice: a plugin dependency,
 # not an installer one; other images lack it, so the 503 refusal is checked there.
 PREP[debian]+=" && apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui >/dev/null"
@@ -253,7 +253,7 @@ run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   { echo "IMAGE=${IMAGE[$d]} $(docker image inspect -f '{{index .RepoDigests 0}}' "${IMAGE[$d]}" 2>/dev/null)"
-    docker run --cpus=4 --restart=no --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || echo PREP_FAILED; $script"
+    docker run --cpus=4 --restart=no --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || { echo PREP_FAILED; exit 1; }; $script"
   } >"$out/install.log" 2>&1
   (( keep )) || docker rm -f "$name" >/dev/null 2>&1
 }
