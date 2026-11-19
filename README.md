@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/SingularBunny/ai-workbench/actions/workflows/check.yml"><img src="https://github.com/SingularBunny/ai-workbench/actions/workflows/check.yml/badge.svg" alt="check"></a>
   <a href="https://github.com/SingularBunny/ai-workbench/actions/workflows/docker.yml"><img src="https://github.com/SingularBunny/ai-workbench/actions/workflows/docker.yml/badge.svg" alt="docker install"></a>
+  <a href="https://github.com/SingularBunny/ai-workbench/actions/workflows/upgrade.yml"><img src="https://github.com/SingularBunny/ai-workbench/actions/workflows/upgrade.yml/badge.svg" alt="upgrade"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license: MIT"></a>
 </p>
 

@@ -1,0 +1,37 @@
+# The UPGRADE scenario on the OpenClaw fork's releases: install.sh with the previous release, then with the latest,
+# in a Debian container where the Gateway is a systemd user service (tools/validate_in_docker.sh --upgrade-from).
+# The packages are checked against their sha256 files and the fork's build provenance before use. Weekly and on demand.
+name: upgrade
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+  attestations: read
+jobs:
+  upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      FORK: SingularBunny/openclaw
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fork releases (previous and latest)
+        run: |
+          mapfile -t tags < <(gh release list -R "$FORK" -L 2 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName')
+          [[ ${#tags[@]} -eq 2 ]] || { echo "need two fork releases, found: ${tags[*]}"; exit 1; }
+          echo "new: ${tags[0]}  old: ${tags[1]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          for pair in "new ${tags[0]}" "old ${tags[1]}"; do
+            set -- $pair
+            gh release download "$2" -R "$FORK" -D "dist/ci/$1" -p 'openclaw-2*.tgz' -p 'openclaw-2*.tgz.sha256'
+            (cd "dist/ci/$1" && sha256sum -c ./*.sha256)
+            gh attestation verify dist/ci/$1/openclaw-2*.tgz -R "$FORK"
+          done
+      # Exits non-zero when any UPGRADE_* marker is red (RESULT line in the log).
+      - run: |
+          bash tools/validate_in_docker.sh --clean --public \
+            --openclaw-package dist/ci/new/openclaw-2*.tgz --upgrade-from dist/ci/old/openclaw-2*.tgz
+      - if: always()
+        run: tail -n 200 dist/validate/upgrade*/install.log 2>/dev/null || ls -R dist/validate
