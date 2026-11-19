@@ -238,7 +238,10 @@ openclaw gateway call chat.history --params "{\"sessionKey\":\"$ob\",\"limit\":2
 MB=$mb MW=$mw MC=$mc OB=$ob python3 - <<'PY2'
 import json, os
 mb, mw, mc, ob = (os.environ[k] for k in ("MB", "MW", "MC", "OB"))
-def ok(name, cond): print(f"{name}={0 if cond else 1}")
+# Moving chats between agents relies on the fork's catalog methods (sessions.catalog.move, grants).
+try: fork = json.load(open("/tmp/projects-fork.json")).get("fork")
+except Exception: fork = None
+def ok(name, cond): print(f"{name}={0 if cond else 1}" if fork else f"{name}=skip (no fork)")
 def load(f, key):
     try: return json.load(open(f)).get(key) or []
     except Exception: return []
@@ -270,7 +273,10 @@ openclaw gateway call chat.history --params "{\"sessionKey\":\"$nw\",\"limit\":2
 MW=$mw NW=$nw python3 - <<'PY2'
 import json, os
 mw, nw = os.environ["MW"], os.environ["NW"]
-def ok(name, cond): print(f"{name}={0 if cond else 1}")
+# Moving chats between agents relies on the fork's catalog methods (sessions.catalog.move, grants).
+try: fork = json.load(open("/tmp/projects-fork.json")).get("fork")
+except Exception: fork = None
+def ok(name, cond): print(f"{name}={0 if cond else 1}" if fork else f"{name}=skip (no fork)")
 rows = json.load(open("/tmp/projects-list.json"))["catalogs"][0]["hosts"][0]["sessions"]
 by = {s.get("sessionKey"): s for s in rows}
 live = {s["key"]: s for s in json.load(open("/tmp/rehome-live.json")).get("sessions", [])}

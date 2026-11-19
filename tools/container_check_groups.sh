@@ -12,6 +12,10 @@ call() { openclaw gateway call "$1" --json --params "$2" 2>/dev/null; }
 if ! call aiwb-groups.chat.get "{\"sessionKey\":\"$key\"}" | grep -q '"members"'; then
   echo "GROUPS=skip (aiwb-groups without group chats)"; exit 0
 fi
+# Replies of ACP members land in the chat through the fork's agent_end for ACP turns.
+if ! call aiwb-fork-settings.effective '{}' | grep -q '"fork": *true'; then
+  echo "GROUPS=skip (no OpenClaw fork: no agent_end for ACP turns)"; exit 0
+fi
 # The member's reply comes through the agent_end hook, which needs conversation access for the plugin.
 if [[ "$(openclaw config get plugins.entries.aiwb-groups.hooks.allowConversationAccess 2>/dev/null | tail -1)" != true ]]; then
   echo "groups: granting plugins.entries.aiwb-groups.hooks.allowConversationAccess for the check"
