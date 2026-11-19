@@ -5,8 +5,10 @@
 //                                                  a timestamped backup of openclaw.json, `openclaw doctor --fix
 //                                                  --non-interactive` (service untouched), validate again.
 //                                                  Exit 0 valid (or this OpenClaw cannot validate), 1 still invalid.
-//   node installer/upgrade.mjs wait-up [--min N] — wait until the Gateway service answers health (bounded);
-//                                                  exit 0 up, 1 failed or not up in time (journal and fix steps printed)
+//   node installer/upgrade.mjs wait-up [--min N] [--no-report] — wait until the Gateway service answers health
+//                                                  (bounded); exit 0 up, 1 failed or not up in time (journal and fix
+//                                                  steps printed, unless --no-report)
+//   node installer/upgrade.mjs doctor            — `openclaw doctor --fix --non-interactive`, service untouched
 //
 // Functions take `run(args, opts)` so installer/test/upgrade.test.mjs checks them without OpenClaw.
 import { spawn, spawnSync } from "node:child_process";
@@ -61,6 +63,15 @@ export function cliRunLive(args, { timeoutMs, env, log = console.log, tickMs = 6
   });
 }
 
+/** Doctor with the service left to the installer (OPENCLAW_SERVICE_REPAIR_POLICY=external). */
+export async function runDoctor({ runLive = cliRunLive, log = console.log, doctorTimeoutMs = DEFAULT_DOCTOR_TIMEOUT_MIN * 60_000, env = process.env } = {}) {
+  const d = await runLive(["doctor", "--fix", "--non-interactive"], { timeoutMs: doctorTimeoutMs,
+    env: { ...env, OPENCLAW_SERVICE_REPAIR_POLICY: "external" } });
+  if (d.timedOut) log("doctor hit the time limit; continuing (the Gateway finishes migrations on start).");
+  else if (d.code !== 0) log(`doctor exited with code ${d.code}; continuing with the checks.`);
+  return d;
+}
+
 /**
  * Validates the config of the installed OpenClaw and repairs legacy keys with doctor. Doctor runs with
  * OPENCLAW_SERVICE_REPAIR_POLICY=external: the installer owns the Gateway service, doctor must not start it.
@@ -81,10 +92,7 @@ export async function configCheck({ run = cliRun, runLive = cliRunLive, copy = c
     log(`Config backed up: ${backup}`);
   }
   log(`Repairing it: openclaw doctor --fix --non-interactive (the Gateway stays stopped; up to ${Math.round(doctorTimeoutMs / 60_000)} min, database migrations can take a while)…`);
-  const d = await runLive(["doctor", "--fix", "--non-interactive"], { timeoutMs: doctorTimeoutMs,
-    env: { ...env, OPENCLAW_SERVICE_REPAIR_POLICY: "external" } });
-  if (d.timedOut) log("doctor hit the time limit; checking the config anyway (the Gateway finishes migrations on start).");
-  else if (d.code !== 0) log(`doctor exited with code ${d.code}; checking the config anyway.`);
+  await runDoctor({ runLive, log, doctorTimeoutMs, env });
   const second = validate();
   if (second.status === "valid") { log("Config repaired and valid."); return { status: "repaired", backup }; }
   return { status: "invalid", backup, issues: second.issues ?? first.issues };
@@ -161,6 +169,7 @@ async function cli(argv) {
     const min = num("--min", "WORKBENCH_GATEWAY_START_MIN", DEFAULT_GATEWAY_START_MIN);
     const r = await waitGatewayUp({ waitMs: min * 60_000 });
     if (r.status === "up" || r.status === "not-loaded") { if (r.status === "up") console.log("Gateway is up."); return 0; }
+    if (argv.includes("--no-report")) return 1;
     console.error(r.status === "failed"
       ? "✗ The Gateway service failed to start after the upgrade."
       : `✗ The Gateway did not become healthy in ${min} min (service state: ${r.state}).`);
@@ -170,7 +179,12 @@ async function cli(argv) {
     console.error("Setup was NOT run against a stopped Gateway.");
     return 1;
   }
-  console.error("usage: upgrade.mjs status | config-check [--doctor-min N] | wait-up [--min N]");
+  if (cmd === "doctor") {
+    console.log("openclaw doctor --fix --non-interactive (the Gateway stays stopped)…");
+    const d = await runDoctor({ doctorTimeoutMs: num("--doctor-min", "WORKBENCH_DOCTOR_TIMEOUT_MIN", DEFAULT_DOCTOR_TIMEOUT_MIN) * 60_000 });
+    return d.code === 0 ? 0 : 1;
+  }
+  console.error("usage: upgrade.mjs status | config-check [--doctor-min N] | wait-up [--min N] [--no-report] | doctor");
   return 64;
 }
 

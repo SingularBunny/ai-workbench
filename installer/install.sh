@@ -151,22 +151,49 @@ resume_chats() {
 gw_stopped=0 gw_leave_down=0
 # rc 2 of upg: no Node or no openclaw to run the check with — nothing to check.
 wait_up() { local rc=0; upg wait-up || rc=$?; (( rc == 0 || rc == 2 )) && return 0; gw_leave_down=1; exit 1; }
+# Running: the service is active or starting, or its Gateway answers. $1: the line of `upg status`.
+gw_running() { local l=($1); [[ "${l[2]:-0}" == 1 || "${l[1]:-}" =~ ^(active|activating|reloading|deactivating)$ ]]; }
+stop_gateway_service() {
+  echo "Stopping the Gateway service for the replacement; it starts again once the config is checked for the new version…"
+  gw_stopped=1
+  # --force: a non-interactive stop (without it OpenClaw refuses to stop the operator's service).
+  openclaw gateway stop --force >/dev/null 2>&1 || true
+  local st i
+  for ((i = 0; i < 120; i++)); do   # the fork waits for agent turns on stop; maintenance has drained them
+    st="$(upg status 2>/dev/null)" || st=""
+    gw_running "$st" || return 0
+    (( i == 3 )) && command -v systemctl >/dev/null && systemctl --user stop openclaw-gateway >/dev/null 2>&1 || true
+    sleep 3
+  done
+  echo "✗ The Gateway service did not stop (state: ${st:-unknown}); OpenClaw was not replaced. Stop it" >&2
+  echo "  (systemctl --user stop openclaw-gateway) and run the install again." >&2
+  exit 1
+}
+start_gateway_service() {
+  command -v systemctl >/dev/null && systemctl --user reset-failed openclaw-gateway >/dev/null 2>&1 || true
+  openclaw gateway install --force || openclaw gateway start || echo "⚠ the Gateway service did not start; checking…" >&2
+}
 replace_openclaw() {   # $1: install-cli.sh, $2: its --version argument
   local st; st="$(upg status 2>/dev/null)" || st=""
   local loaded=0; [[ "${st%% *}" == 1 ]] && loaded=1
-  if (( loaded )); then
-    echo "Stopping the Gateway service for the replacement; it starts again once the config is checked for the new version…"
-    openclaw gateway stop >/dev/null 2>&1 || echo "⚠ openclaw gateway stop failed; continuing." >&2
-    gw_stopped=1
-  fi
+  (( loaded )) && stop_gateway_service
   bash "$1" --prefix "$prefix" --version "$2" --no-onboard --runtime-only
   local rc=0; upg config-check || rc=$?
   (( rc == 0 || rc == 2 )) || { gw_leave_down=1; exit 1; }
   if (( loaded )); then
     echo "Starting the Gateway service of the new OpenClaw…"
-    openclaw gateway install --force || openclaw gateway start || echo "⚠ the Gateway service did not start; checking…" >&2
+    start_gateway_service
     gw_stopped=0
-    wait_up
+    rc=0; upg wait-up --no-report || rc=$?
+    if (( rc == 1 )); then
+      # A new version can refuse to start until doctor migrates its databases ("schema version … run openclaw
+      # doctor --fix"): one repair with the service stopped, then one more start.
+      echo "The Gateway did not start; running openclaw doctor --fix once and starting it again…"
+      command -v systemctl >/dev/null && systemctl --user stop openclaw-gateway >/dev/null 2>&1 || openclaw gateway stop --force >/dev/null 2>&1 || true
+      upg doctor || true
+      start_gateway_service
+      wait_up
+    fi
     gateway_checked=1
   fi
 }
@@ -175,7 +202,7 @@ restart_stopped_gateway() {
   (( gw_stopped && ! gw_leave_down )) || return 0
   gw_stopped=0
   echo "Starting the Gateway service again (the install stopped before it finished)…" >&2
-  openclaw gateway start >/dev/null 2>&1 || echo "⚠ Start it: systemctl --user start openclaw-gateway (or openclaw gateway start)" >&2
+  start_gateway_service >/dev/null 2>&1 || echo "⚠ Start it: systemctl --user start openclaw-gateway (or openclaw gateway start)" >&2
 }
 gateway_checked=0
 cleanup_dirs=()

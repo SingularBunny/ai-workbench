@@ -260,12 +260,13 @@ run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<
 
 # UPGRADE scenario: systemd is PID 1 so the Gateway runs as a systemd user service, as on a workstation (the
 # failure it guards against is a service that crashes on start after an upgrade). Debian only.
+# systemd as PID 1 needs a writable cgroup tree: --cgroupns=host with /sys/fs/cgroup mounted read-write.
 run_upgrade() {
   local name="aiwb-upgrade-check" out="$out_root/upgrade$suffix" uid; uid="$(id -u)"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   {
     echo "IMAGE=${IMAGE[debian]} old=$(basename "$upgrade_from") new=$(basename "$oc_package")"
-    docker run -d --cpus=4 --restart=no --name "$name" --cgroupns=private --tmpfs /run --tmpfs /run/lock \
+    docker run -d --cpus=4 --restart=no --name "$name" -e container=docker --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
       -e HOST_UID="$uid" "${mounts[@]}" -v "$out:/out" "${IMAGE[debian]}" bash -c "
         ${PREP[debian]%% && apt-get install -y -qq --no-install-recommends libreoffice*} && apt-get install -y -qq --no-install-recommends systemd systemd-sysv dbus dbus-user-session >/dev/null || echo PREP_FAILED
         getent passwd $uid | cut -d: -f1 | xargs -r userdel -r 2>/dev/null

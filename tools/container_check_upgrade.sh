@@ -53,17 +53,23 @@ healthy 60; mark UPGRADE_HEALTH $?
 openclaw config validate; mark UPGRADE_CONFIG_VALID $?
 [[ "$(json_get agents.defaults.heartbeat)" == null ]]; mark UPGRADE_LEGACY_REPAIRED $?
 ls ~/.openclaw/openclaw.json.pre-upgrade-* >/dev/null 2>&1; mark UPGRADE_CONFIG_BACKUP $?
-st="$(openclaw gateway call gateway.maintenance.status --params '{}' --json 2>/dev/null)"
-[[ ! -f "$mfile" && "$st" == *'"active": false'* || ! -f "$mfile" && "$st" == *'"active":false'* ]]; mark UPGRADE_MAINTENANCE_OFF $?
-echo "  maintenance status: $(tr -d '\n ' <<<"$st" | head -c 200)"
+# The old package may have no maintenance mode; the new Gateway gets it for the setup, which must end it.
+grep -q "Maintenance mode on" /tmp/upgrade.log && grep -q "Maintenance mode off" /tmp/upgrade.log && [[ ! -f "$mfile" ]]
+mark UPGRADE_MAINTENANCE_OFF $?
 
-echo "==== upgrade: a Gateway that cannot start"
-systemctl --user stop openclaw-gateway
-json_set gateway.aiwbUpgradeCheckBogusKey 1
-systemctl --user start openclaw-gateway
-for _ in $(seq 1 40); do [[ "$(systemctl --user is-active openclaw-gateway)" == failed ]] && break; sleep 3; done
-echo "  service before the install: $(systemctl --user is-active openclaw-gateway)"
-WORKBENCH_GATEWAY_START_MIN=3 installer/install.sh $args > /tmp/dead.log 2>&1; rc=$?
-grep -E "✗|Setup was NOT run|journalctl|Maintenance mode" /tmp/dead.log | head -12
-(( rc != 0 )) && grep -q "Setup was NOT run" /tmp/dead.log; mark UPGRADE_DEAD_GATEWAY_STOPS $?
-[[ ! -f "$mfile" ]]; mark UPGRADE_DEAD_MAINTENANCE_OFF $?
+echo "==== upgrade: a Gateway that cannot start after the replacement"
+# As on 19.11: maintenance on, OpenClaw replaced, the service fails on start. A drop-in makes the start fail; the
+# package mark is removed so the same package is installed again (a replacement, with maintenance on).
+mkdir -p ~/.config/systemd/user/openclaw-gateway.service.d
+printf '[Service]\nExecStart=\nExecStart=/bin/sh -c "echo OpenClaw config is invalid: check fake failure >&2; exit 78"\n' \
+  > ~/.config/systemd/user/openclaw-gateway.service.d/zz-aiwb-check-fail.conf
+systemctl --user daemon-reload
+rm -f ~/.openclaw/workbench/openclaw-package.sha256
+WORKBENCH_GATEWAY_START_MIN=2 installer/install.sh $args > /tmp/dead.log 2>&1; rc=$?
+grep -E "Maintenance mode|Stopping the Gateway|Starting the Gateway|did not start|doctor|✗|Setup was NOT run|fake failure|cleared" /tmp/dead.log | head -20
+echo "  install exit: $rc, service: $(systemctl --user is-active openclaw-gateway)"
+(( rc != 0 )) && grep -q "Setup was NOT run" /tmp/dead.log && ! grep -q "^→ check config validate" /tmp/dead.log
+mark UPGRADE_DEAD_GATEWAY_STOPS $?
+grep -q "Maintenance mode on" /tmp/dead.log && [[ ! -f "$mfile" ]]; mark UPGRADE_DEAD_MAINTENANCE_OFF $?
+grep -q "fake failure" /tmp/dead.log; mark UPGRADE_DEAD_JOURNAL_SHOWN $?
+rm -f ~/.config/systemd/user/openclaw-gateway.service.d/zz-aiwb-check-fail.conf; systemctl --user daemon-reload

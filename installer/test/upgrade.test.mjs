@@ -114,7 +114,7 @@ test("maintenance exit: retries while the Gateway starts, clears the file when i
 // install.sh end to end with a fake `openclaw`, a fake install-cli.sh and a fake setup.mjs. The fake Gateway is a
 // "service" whose state lives in files: install-cli.sh switches it to the "new" version, whose config check rejects
 // a legacy key until doctor removes it, and whose start fails with an invalid config (as 2026.11.5 did).
-function runUpgrade({ legacy = false, doctorFails = false, diesAfterStart = false, setupExit = 0 } = {}) {
+function runUpgrade({ legacy = false, doctorFails = false, diesAfterStart = false, diesOnce = false, setupExit = 0 } = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "aiwb-upg-"));
   try {
     const inst = path.join(dir, "repo", "installer");
@@ -129,6 +129,7 @@ function runUpgrade({ legacy = false, doctorFails = false, diesAfterStart = fals
     if (legacy) writeFileSync(path.join(fake, "legacy"), "");
     if (doctorFails) writeFileSync(path.join(fake, "doctor-fails"), "");
     if (diesAfterStart) writeFileSync(path.join(fake, "dies"), "");
+    if (diesOnce) writeFileSync(path.join(fake, "dies-once"), "");
     writeFileSync(path.join(fake, "state"), "active");
     writeFileSync(path.join(inst, "setup.mjs"), `import { appendFileSync } from "node:fs";
 appendFileSync(${JSON.stringify(log)}, "setup\\n"); process.exit(${setupExit});\n`);
@@ -143,7 +144,7 @@ case "$1 $2" in
   "gateway status") echo "{\\"service\\":{\\"loaded\\":true,\\"runtime\\":{\\"state\\":\\"$st\\"}},\\"rpc\\":{\\"ok\\":$([[ $st == active ]] && echo true || echo false)}}";;
   "gateway stop") echo "gateway stop" >> $L; echo inactive > $F/state;;
   "gateway install"|"gateway start") echo "gateway $2" >> $L
-     if bad || [[ -f $F/dies ]]; then echo failed > $F/state; else echo active > $F/state; fi;;
+     if bad || [[ -f $F/dies || -f $F/dies-once ]]; then echo failed > $F/state; else echo active > $F/state; fi;;
   "gateway call") echo "call $3" >> $L
      [[ $st == active ]] || { echo "Error: connect ECONNREFUSED 127.0.0.1:18789" >&2; exit 1; }
      case "$3" in
@@ -155,13 +156,15 @@ case "$1 $2" in
   "config validate") if bad; then echo "{\\"valid\\":false,\\"path\\":\\"$F/openclaw.json\\",\\"issues\\":[{\\"path\\":\\"agents.defaults\\",\\"message\\":\\"Unrecognized key: heartbeat\\"}]}"; exit 1
      else echo "{\\"valid\\":true,\\"path\\":\\"$F/openclaw.json\\"}"; fi;;
   "config file") echo "$F/openclaw.json";;
-  "doctor "*) echo "doctor $2 $3 policy=$OPENCLAW_SERVICE_REPAIR_POLICY" >> $L; [[ -f $F/doctor-fails ]] && exit 1; rm -f $F/legacy; echo '{}' > $F/openclaw.json;;
+  "doctor "*) echo "doctor $2 $3 policy=$OPENCLAW_SERVICE_REPAIR_POLICY" >> $L; [[ -f $F/doctor-fails ]] && exit 1; rm -f $F/legacy $F/dies-once; echo '{}' > $F/openclaw.json;;
   "health"*) [[ $st == active ]] && echo "Agents: main" || { echo "gateway closed" >&2; exit 1; };;
   *) echo '{}';;
 esac
 `);
     writeFileSync(path.join(bin, "journalctl"), `#!/usr/bin/env bash\necho "openclaw-gateway: OpenClaw config is invalid (fake journal)"\n`);
-    for (const f of ["openclaw", "journalctl"]) chmodSync(path.join(bin, f), 0o755);
+    // systemctl --user of the fake service: stop and reset-failed only.
+    writeFileSync(path.join(bin, "systemctl"), `#!/usr/bin/env bash\necho "systemctl $2" >> ${L}; [[ "$2" == stop ]] && echo inactive > ${F}/state; true\n`);
+    for (const f of ["openclaw", "journalctl", "systemctl"]) chmodSync(path.join(bin, f), 0o755);
     const cli = path.join(dir, "install-cli.sh");
     writeFileSync(cli, `echo "install-cli $*" >> ${L}; touch ${F}/new\n`);
     const r = spawnSync("bash", [path.join(inst, "install.sh"), "--yes"], { encoding: "utf8",
@@ -176,7 +179,7 @@ esac
   }
 }
 
-const strip = (calls) => calls.map((c) => c.replace(/^install-cli .*--runtime-only.*$/, "install-cli --runtime-only"));
+const strip = (calls) => calls.map((c) => c.replace(/^install-cli .*--runtime-only.*$/, "install-cli --runtime-only")).filter((c) => !c.startsWith("systemctl reset-failed"));
 
 test("install.sh upgrade: normal path — stop, replace without a service restart, start, setup, maintenance off", () => {
   const r = runUpgrade();
@@ -218,4 +221,15 @@ test("install.sh upgrade: Gateway dead after the restart → journal and fix ste
   assert.match(r.out, /fake journal/);
   assert.match(r.out, /reset-failed openclaw-gateway/);
   assert.match(r.out, /Setup was NOT run/);
+  assert.ok(r.calls.includes("doctor --fix --non-interactive policy=external"), "one doctor repair before giving up");
+});
+
+test("install.sh upgrade: a Gateway that refuses its first start (database schema) is repaired by doctor once", () => {
+  const r = runUpgrade({ diesOnce: true });
+  assert.equal(r.code, 0, r.out);
+  const d = r.calls.indexOf("doctor --fix --non-interactive policy=external");
+  assert.ok(d > r.calls.indexOf("gateway install") && d < r.calls.lastIndexOf("gateway install"), r.calls.join("\n"));
+  assert.ok(r.calls.includes("setup"));
+  assert.ok(!r.maintenanceLeft);
+  assert.equal(r.state, "active");
 });
