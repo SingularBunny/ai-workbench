@@ -50,7 +50,7 @@ What happens:
      - name: jq
        required: false
    ```
-   A profile whose plugins use other key names sets them in `DEPENDENCIES` (see `installer/lib.mjs`,
+   A profile whose plugins use other key names sets them in `DEPENDENCIES` (see `installer/lib/dependencies.mjs`,
    `DEPENDENCIES_FORMAT`).
    Plugins renamed in November 2026 (`ai-workbench` → `judge`, `aiwb-projects` → `aiwb-claude-bridge`,
    `aiwb-settings` → `aiwb-fork-settings`, folder `memory/` → `shared-memory/`) are moved over on a

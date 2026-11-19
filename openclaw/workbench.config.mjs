@@ -165,7 +165,7 @@ export const LLAMA_CPP_VULKAN = {
 // Where plugins are downloaded from. The public build uses only the ai-workbench plugins repository
 // (judge, Claude Desktop & Code bridge, shared memory, fork settings, document preview, multi-model compare,
 // groups, plan mode, GPU use, scheduled-tasks MCP); other own
-// repositories are added by the profile. Entry format: { dir, repo }, see installer/lib.mjs, repoSteps.
+// repositories are added by the profile. Entry format: { dir, repo }, see installer/lib/repos.mjs, repoSteps.
 export const PLUGINS_REPO = { dir: "aiwb-plugins", repo: "https://github.com/SingularBunny/aiwb-plugins.git" };
 export const REPOS = [PLUGINS_REPO];
 
@@ -227,7 +227,7 @@ export const PLUGINS = {
 
 // Own plugins renamed in November 2026 (folder and id). An existing install still has the old ids in
 // plugins.entries, plugins.load.paths and plugins.allow/deny: the installer moves them to the new ones
-// (installer/lib.mjs, pluginRenameSteps), and uninstall also removes what is left under the old ids.
+// (installer/lib/manifest.mjs, pluginRenameSteps), and uninstall also removes what is left under the old ids.
 export const PLUGIN_RENAMES = [
   { from: "ai-workbench", to: "judge", fromDir: "aiwb-plugins/ai-workbench", toDir: "aiwb-plugins/judge" },
   { from: "aiwb-projects", to: "aiwb-claude-bridge", fromDir: "aiwb-plugins/projects", toDir: "aiwb-plugins/claude-bridge" },
@@ -236,7 +236,7 @@ export const PLUGIN_RENAMES = [
 ];
 
 // Public build MCP servers come only from the plugins repository (root: "plugins", relative to --plugins-root); own ones go in the profile.
-// Format: installer/lib.mjs, mcpSteps.
+// Format: installer/lib/repos.mjs, mcpSteps.
 export const MCP = [
   // Scheduled tasks with the Claude Desktop contract on top of `openclaw automations`.
   // Installed only if the profile sets TASKS; the list of allowed tasks comes from there too.

@@ -23,7 +23,7 @@ warn() { echo "🟡 $1"; yellow=1; }
 UVPY=(uv run --quiet --no-project --with pytest python)
 
 if command -v node >/dev/null; then
-  out=$(for f in installer/*.mjs openclaw/*.mjs migrate/*.mjs migrate/*/*.mjs tools/*.mjs; do node --check "$f" || echo "syntax: $f"; done 2>&1)
+  out=$(for f in installer/*.mjs installer/lib/*.mjs openclaw/*.mjs migrate/*.mjs migrate/*/*.mjs tools/*.mjs; do node --check "$f" || echo "syntax: $f"; done 2>&1)
   [[ -z "$out" ]] && ok "node --check of the installer and template" || fail "node --check:\n$out"
   out=$(node --test 'installer/test/*.test.mjs' 'migrate/test/*.test.mjs' 'migrate/*/test/*.test.mjs' 2>&1) && ok "node --test: $(echo "$out" | grep -E '^ℹ pass' | sed 's/ℹ //')" || fail "node --test:\n$(echo "$out" | grep -E '^(✖|ℹ fail)')"
   # Template: Gateway on loopback only, token as a ${…} reference, exact OpenClaw version.
