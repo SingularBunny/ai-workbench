@@ -34,4 +34,12 @@ jobs:
           bash tools/validate_in_docker.sh --clean --public \
             --openclaw-package dist/ci/new/openclaw-2*.tgz --upgrade-from dist/ci/old/openclaw-2*.tgz
       - if: always()
-        run: tail -n 200 dist/validate/upgrade*/install.log 2>/dev/null || ls -R dist/validate
+        run: |
+          grep -hE '✗|_EXIT=|^==== ' dist/validate/upgrade*/install.log 2>/dev/null || ls -R dist/validate
+          tail -n 120 dist/validate/upgrade*/install.log 2>/dev/null || true
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: upgrade-logs
+          path: dist/validate/upgrade*/
+          retention-days: 14
