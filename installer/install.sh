@@ -44,9 +44,11 @@ fi
 # WORKBENCH_PROXY_ROUTES is not read here. install-cli.sh itself downloads Node and npm packages and follows
 # HTTPS_PROXY from the environment.
 proxy_for() {
-  local url="${WORKBENCH_PROXY_URL:-}" hosts="${WORKBENCH_PROXY_HOSTS:-}" host="${1,,}" h
+  # tr, not ${x,,}: macOS ships bash 3.2, which has no case conversion.
+  local url="${WORKBENCH_PROXY_URL:-}" hosts="${WORKBENCH_PROXY_HOSTS:-}" host h
+  host="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   [[ -n "$url" ]] || return 0
-  hosts="${hosts// /}"; hosts="${hosts,,}"
+  hosts="$(printf '%s' "${hosts// /}" | tr '[:upper:]' '[:lower:]')"
   if [[ -z "$hosts" || "$hosts" == "*" || "$hosts" == "all" ]]; then echo "$url"; return 0; fi
   IFS=',' read -ra list <<< "$hosts"
   for h in "${list[@]}"; do

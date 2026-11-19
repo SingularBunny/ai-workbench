@@ -23,7 +23,7 @@ warn() { echo "🟡 $1"; yellow=1; }
 UVPY=(uv run --quiet --no-project --with pytest python)
 
 if command -v node >/dev/null; then
-  out=$(for f in installer/*.mjs openclaw/*.mjs migrate/*/*.mjs; do node --check "$f" || echo "syntax: $f"; done 2>&1)
+  out=$(for f in installer/*.mjs openclaw/*.mjs migrate/*.mjs migrate/*/*.mjs tools/*.mjs; do node --check "$f" || echo "syntax: $f"; done 2>&1)
   [[ -z "$out" ]] && ok "node --check of the installer and template" || fail "node --check:\n$out"
   out=$(node --test 'installer/test/*.test.mjs' 'migrate/test/*.test.mjs' 'migrate/*/test/*.test.mjs' 2>&1) && ok "node --test: $(echo "$out" | grep -E '^ℹ pass' | sed 's/ℹ //')" || fail "node --test:\n$(echo "$out" | grep -E '^(✖|ℹ fail)')"
   # Template: Gateway on loopback only, token as a ${…} reference, exact OpenClaw version.
@@ -58,6 +58,15 @@ fi
 
 out=$(for f in installer/install.sh tools/*.sh; do bash -n "$f" || echo "$f"; done 2>&1)
 [[ -z "$out" ]] && ok "bash -n of the wrappers" || fail "bash -n:\n$out"
+# install.sh also runs on macOS, whose /bin/bash is 3.2: no ${x,,}, ${x^^}, declare -A, mapfile.
+out=$(grep -nE '\$\{[A-Za-z_0-9]+(,,|\^\^)\}|declare -A|mapfile|readarray' installer/install.sh | grep -vE '^[0-9]+:[[:space:]]*#')
+[[ -z "$out" ]] && ok "install.sh avoids bash 4 syntax (macOS bash 3.2)" || fail "install.sh uses bash 4 syntax:\n$out"
+if command -v shellcheck >/dev/null; then
+  out=$(shellcheck -S error installer/install.sh tools/*.sh 2>&1) && ok "shellcheck (errors)" || fail "shellcheck:\n$out"
+else
+  warn "no shellcheck — shell scripts checked with bash -n only"
+fi
+out=$(python3 -c 'import ast, sys; [ast.parse(open(f, encoding="utf-8").read(), f) for f in sys.argv[1:]]' installer/tts/*.py tools/*.py 2>&1) && ok "Python compiles" || fail "py_compile:\n$out"
 if command -v pwsh >/dev/null; then
   out=$(pwsh -NoProfile -Command '$e=$null; $null=[System.Management.Automation.Language.Parser]::ParseFile("installer/install.ps1",[ref]$null,[ref]$e); if($e.Count){$e|%{$_.Message}; exit 1}' 2>&1) && ok "install.ps1 syntax" || fail "install.ps1:\n$out"
 else
