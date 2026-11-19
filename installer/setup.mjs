@@ -43,6 +43,11 @@ const envFile = path.join(stateDir, ".env");
 const acpFile = path.join(home, ".jetbrains", "acp.json");
 const readText = (f) => (existsSync(f) ? readFileSync(f, "utf8") : "");
 
+// systemctl is on PATH and the user's systemd answers: neither holds in a container, and an SSH session without
+// lingering has systemctl but no user bus. Without it, timers and the stop drop-in are skipped with a reason.
+const userSystemd = (which) =>
+  Boolean(which("systemctl")) && spawnSync("systemctl", ["--user", "show-environment"], { encoding: "utf8" }).status === 0;
+
 /** Plugin skills: SKILL.md under skills/ (up to 4 levels) → { name, dir, sha }; name comes from frontmatter. */
 function pluginSkills(root) {
   const out = [];
@@ -186,7 +191,7 @@ async function uninstall() {
   // Our Gateway stop-timeout drop-in (installed with the fork) goes with the install.
   const which = makeWhich({ envPath: process.env.PATH, pathExt: process.env.PATHEXT, platform: process.platform,
     exists: existsSync, delimiter: path.delimiter });
-  plan.push(...gatewayStopTimeoutSteps({ fork: false, platform: process.platform, systemctl: which("systemctl"),
+  plan.push(...gatewayStopTimeoutSteps({ fork: false, platform: process.platform, systemctl: userSystemd(which),
     unitDir: path.join(home, ".config", "systemd", "user"), exists: existsSync }));
   console.log(`ai-workbench: uninstall${manifest.createdAt ? ` of the install from ${manifest.createdAt}` : " without manifest"}\nPlan:\n` + formatPlan(plan));
   console.log("\nLeft untouched: OpenClaw, ~/.openclaw/.env, sessions, memory, agent workspaces, repository clones,\n" +
@@ -526,15 +531,15 @@ async function main() {
     ...(CHATS.learnedSkills ? { skillsTo: path.resolve(profileRoot, CHATS.learnedSkills) } : {}),
     ...(CHATS.commit?.length ? { commit: CHATS.commit.map((d) => path.resolve(profileRoot, d)) } : {}) };
   // With the fork, systemd waits for the Gateway's stop as long as the Gateway waits for agent turns (a drop-in).
-  plan.push(...gatewayStopTimeoutSteps({ fork, platform: process.platform, systemctl: which("systemctl"),
+  plan.push(...gatewayStopTimeoutSteps({ fork, platform: process.platform, systemctl: userSystemd(which),
     unitDir: path.join(home, ".config", "systemd", "user"), exists: existsSync, read: (f) => (existsSync(f) ? readText(f) : null) }));
-  plan.push(...chatsTimerSteps({ root: chatsRoot, archive, platform: process.platform, systemctl: which("systemctl"),
+  plan.push(...chatsTimerSteps({ root: chatsRoot, archive, platform: process.platform, systemctl: userSystemd(which),
     // The Node installed by OpenClaw (install-cli.sh), not the system one: that may be removed or upgraded.
     unitDir: path.join(home, ".config", "systemd", "user"),
     node: [path.join(stateDir, "tools", "node", "bin", "node")].find(existsSync) || process.execPath,
     script: path.join(projectRoot, "migrate", "chats-sync.mjs"),
     pathDirs: [...(openclawBin ? [path.dirname(openclawBin)] : []), "/usr/local/bin", "/usr/bin", "/bin"] }));
-  plan.push(...knowledgeTextTimerSteps({ knowledge, platform: process.platform, systemctl: which("systemctl"),
+  plan.push(...knowledgeTextTimerSteps({ knowledge, platform: process.platform, systemctl: userSystemd(which),
     unitDir: path.join(home, ".config", "systemd", "user"),
     node: [path.join(stateDir, "tools", "node", "bin", "node")].find(existsSync) || process.execPath,
     script: officeDir ? path.join(officeDir, "bin", "knowledge-text.mjs") : "", pathDirs: ["/usr/local/bin", "/usr/bin", "/bin"] }));
