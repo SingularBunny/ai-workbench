@@ -9,7 +9,7 @@
 // (OpenClaw reads it itself, docs/gateway/config-secrets-env.md). A config key not
 // found in the openclaw 5f68d354 docs does not go here.
 
-export const OPENCLAW_VERSION = "2026.11.3";
+export const OPENCLAW_VERSION = "2026.11.5";
 
 /** @param {{ home: string, sep: string, env: Record<string, string|undefined> }} ctx */
 export function settings(ctx) {
