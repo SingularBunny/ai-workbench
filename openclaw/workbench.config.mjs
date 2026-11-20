@@ -197,6 +197,9 @@ export const PLUGINS = {
     // Chat menu items for any model: Forget a topic (with the fork's chat.forget methods), New chat, Learn a skill,
     // Reset chat (docs/features/chats.md). ui: the menu items need Custom plugin UI.
     { id: "aiwb-chat-tools", dir: "aiwb-plugins/chat-tools", ui: "Chat tools" },
+    // In an automation's chat: Run now in the header and the Runs side panel (docs/features/chats.md). Needs a fork
+    // build with the run viewer for plugins; on an older one it adds nothing.
+    { id: "aiwb-automation-chat", dir: "aiwb-plugins/automation-chat", ui: "Automation chat" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone

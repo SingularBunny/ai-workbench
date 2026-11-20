@@ -150,6 +150,10 @@ The `aiwb-chat-tools` plugin adds items to a chat's **⋯** menu (and the sessio
   paragraphs are removed from their files. Needs the OpenClaw fork (its `chat.forget` methods).
 - **New chat**, **Learn a skill from this chat** (`/learn`), **Reset chat…** (`/reset`, after a confirmation).
 
+In an automation's chat the `aiwb-automation-chat` plugin adds **Run now** (**Run again** after a failed run, **Run…**
+when several jobs deliver into the chat) to the header, after a confirmation, and a **Runs** side panel with the latest
+runs of those jobs; a run opens in place in the same viewer as the Automations page.
+
 ## Agents managing chats
 
 An agent can work with chats on its own when asked: "start a chat in agent Claude with this prompt", "send this to
