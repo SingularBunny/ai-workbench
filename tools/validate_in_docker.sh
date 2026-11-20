@@ -222,18 +222,21 @@ su - tester -c "export PATH=/home/tester/.openclaw/bin:/home/tester/bin:\$PATH
   (openclaw gateway run > /tmp/gw.log 2>&1 &) ; for i in \$(seq 1 45); do sleep 2; openclaw health >/dev/null 2>&1 && break; done
   # The exit code of health itself, not of the last command in the pipeline.
   openclaw health > /tmp/health.txt 2>&1; echo HEALTH_EXIT=\$?; grep -vi deprecat /tmp/health.txt | head -12
-  bash /opt/ai-workbench/tools/container_check_ide.sh
-  bash /opt/ai-workbench/tools/container_check_chats.sh
-  bash /opt/ai-workbench/tools/container_check_catalog.sh
+  # A check that restarts the Gateway (settings hot reload, plugin changes) may leave it still starting; the next check
+  # waits until it admits requests again, else its first call meets \"admission closed\" on a slow machine.
+  ready() { for i in \$(seq 1 60); do openclaw health >/dev/null 2>&1 && return 0; sleep 2; done; }
+  ready; bash /opt/ai-workbench/tools/container_check_ide.sh
+  ready; bash /opt/ai-workbench/tools/container_check_chats.sh
+  ready; bash /opt/ai-workbench/tools/container_check_catalog.sh
   # Right after the catalog: a Gateway restart in a later check lets the projects plugin adopt the made-up project
   # chats into main before the project agents exist.
-  bash /opt/ai-workbench/tools/container_check_projects.sh
-  bash /opt/ai-workbench/tools/container_check_claude_cli.sh
-  bash /opt/ai-workbench/tools/container_check_office.sh
-  bash /opt/ai-workbench/tools/container_check_plan.sh
-  [[ -n \"$ACPX_SHA\" ]] && ACPX_SHA=$ACPX_SHA bash /opt/ai-workbench/tools/container_check_acpx.sh
-  bash /opt/ai-workbench/tools/container_check_junie.sh
-  bash /opt/ai-workbench/tools/container_check_groups.sh
+  ready; bash /opt/ai-workbench/tools/container_check_projects.sh
+  ready; bash /opt/ai-workbench/tools/container_check_claude_cli.sh
+  ready; bash /opt/ai-workbench/tools/container_check_office.sh
+  ready; bash /opt/ai-workbench/tools/container_check_plan.sh
+  ready; [[ -n \"$ACPX_SHA\" ]] && ACPX_SHA=$ACPX_SHA bash /opt/ai-workbench/tools/container_check_acpx.sh
+  ready; bash /opt/ai-workbench/tools/container_check_junie.sh
+  ready; bash /opt/ai-workbench/tools/container_check_groups.sh
   [[ -n \"$LIVE_MODEL\" ]] && python3 /opt/ai-workbench/tools/live_model_check.py \"$LIVE_JUDGE\"
   if [[ -n \"$PROFILE_DIR\" ]]; then
     echo ==== tasks; node=\$(find ~/.openclaw -maxdepth 5 -type f -path \"*/bin/node\" | head -1)
