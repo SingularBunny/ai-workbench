@@ -84,3 +84,11 @@ fi
 acpx=$(ls -t "$out"/openclaw-acpx-*-"$rev".tgz | head -1)
 echo "ACPX package: $acpx"
 echo "ACPX sha256: $(sha256sum "$acpx" | cut -d' ' -f1)"
+# Old builds pile up (about 115 MB each): keep the packages of the newest WORKBENCH_FORK_BUILDS_KEEP commits
+# (default 2: this build and the previous one to roll back to) and the package named in the environment.
+keep=${WORKBENCH_FORK_BUILDS_KEEP:-2}
+mapfile -t revs < <(ls -t "$out"/openclaw-*.tgz 2>/dev/null | sed -E 's/.*-([0-9a-f]{12})\.tgz$/\1/' | awk '!seen[$0]++' | head -n "$keep")
+for f in "$out"/openclaw-*.tgz; do
+  r=$(basename "$f" .tgz); r=${r##*-}
+  [[ " ${revs[*]} " == *" $r "* || "$f" == "${WORKBENCH_OPENCLAW_PACKAGE:-}" || "$f" == "${WORKBENCH_ACPX_PACKAGE:-}" ]] || rm -f -- "$f"
+done

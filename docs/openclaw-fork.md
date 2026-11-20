@@ -8,7 +8,8 @@ are built on GitHub-hosted runners with signed build provenance; to check that a
 from the fork's commit, run `gh attestation verify <file>.tgz -R SingularBunny/openclaw`. The same `install-cli.sh` installs it (`--version <package>`) instead of the pinned
 version; the same package is not reinstalled. To build the fork package, run
 `tools/openclaw-fork-build.sh <fork folder>` (Docker, the committed tree; the package and its sha256
-land in `dist/openclaw-fork/`). The default build takes about 5 minutes: the same JavaScript and Control UI
+land in `dist/openclaw-fork/`; older builds are removed, keeping the packages of the last two commits and the
+one named in `WORKBENCH_OPENCLAW_PACKAGE`, `WORKBENCH_FORK_BUILDS_KEEP` changes how many). The default build takes about 5 minutes: the same JavaScript and Control UI
 as a release, without the shared type declarations (`.d.ts`) that only plugin authors need for type
 checking; this is enough to install and run. `--release` builds exactly like an OpenClaw release (~30
 minutes). The same run builds the ACPX plugin package ([ACPX from the fork](#acpx-from-the-fork)). To check it,

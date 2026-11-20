@@ -31,6 +31,7 @@ NOT_SETTINGS = {
 # Variables of single commands, set in the shell when running them.
 COMMAND_VARS = {
     "WORKBENCH_OPENCLAW_SRC": "`tools/openclaw-fork-build.sh`: the fork checkout, when not given as the first argument.",
+    "WORKBENCH_FORK_BUILDS_KEEP": "`tools/openclaw-fork-build.sh`: how many latest commits keep their packages in the output folder; default 2.",
     "WORKBENCH_EVAL_AGENT": "`tools/eval-executor/claude`: the OpenClaw agent that answers eval scenarios; default `main`.",
 }
 
