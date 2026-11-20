@@ -38,8 +38,19 @@ healthy 240; mark UPGRADE_OLD_GATEWAY_UP $?
 echo "==== upgrade: a key the new version retired"
 systemctl --user stop openclaw-gateway
 json_set agents.defaults.heartbeat '{"agentId":"main"}'
-openclaw config validate >/dev/null 2>&1; mark UPGRADE_OLD_ACCEPTS_LEGACY $?
-systemctl --user start openclaw-gateway; healthy 240; mark UPGRADE_OLD_GATEWAY_RESTARTED $?
+# The key was retired in 2026.11.5: an old package from before accepts it, and the upgrade must repair it. An old
+# package that already rejects it cannot carry it into the upgrade: the key goes again and these checks are skipped.
+if openclaw config validate >/dev/null 2>&1; then
+  mark UPGRADE_OLD_ACCEPTS_LEGACY 0
+  systemctl --user start openclaw-gateway; healthy 240; mark UPGRADE_OLD_GATEWAY_RESTARTED $?
+  legacy_key=1
+else
+  echo "the old package already rejects agents.defaults.heartbeat: no retired key to carry into this upgrade"
+  json_set agents.defaults.heartbeat null; node -e 'const fs=require("fs");const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,"utf8"));delete j.agents.defaults.heartbeat;fs.writeFileSync(p,JSON.stringify(j,null,2)+"\n")' "$cfg"
+  mark UPGRADE_OLD_ACCEPTS_LEGACY skip; mark UPGRADE_OLD_GATEWAY_RESTARTED skip
+  systemctl --user start openclaw-gateway; healthy 240
+  legacy_key=0
+fi
 
 echo "==== upgrade: install.sh with the new OpenClaw"
 set_pkg /mnt/openclaw.tgz
@@ -52,7 +63,11 @@ new_version="$(openclaw --version 2>/dev/null)"; echo "new: $new_version"
 healthy 60; mark UPGRADE_HEALTH $?
 openclaw config validate; mark UPGRADE_CONFIG_VALID $?
 [[ "$(json_get agents.defaults.heartbeat)" == null ]]; mark UPGRADE_LEGACY_REPAIRED $?
-ls ~/.openclaw/openclaw.json.pre-upgrade-* >/dev/null 2>&1; mark UPGRADE_CONFIG_BACKUP $?
+if (( legacy_key )); then
+  ls ~/.openclaw/openclaw.json.pre-upgrade-* >/dev/null 2>&1; mark UPGRADE_CONFIG_BACKUP $?
+else
+  mark UPGRADE_CONFIG_BACKUP skip
+fi
 # The old package may have no maintenance mode; the new Gateway gets it for the setup, which must end it.
 grep -q "Maintenance mode on" /tmp/upgrade.log && grep -q "Maintenance mode off" /tmp/upgrade.log && [[ ! -f "$mfile" ]]
 mark UPGRADE_MAINTENANCE_OFF $?
