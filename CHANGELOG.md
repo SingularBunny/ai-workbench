@@ -9,6 +9,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Chat tools (`aiwb-chat-tools`): **Forget a topic…**, **New chat**, **Learn a skill from this chat** and **Reset chat…**
+  in a chat's ⋯ menu come from a plugin instead of the OpenClaw fork ([Chats](docs/features/chats.md#chat-menu-items)).
 - Safe OpenClaw upgrades ([Upgrades](docs/install/run.md#upgrades)): the installer pauses chats in Gateway maintenance
   mode for the whole install and never leaves it on; before the restart it stops the Gateway (`gateway stop --force`,
   verified), runs `config validate` and repairs retired keys with `doctor --fix --non-interactive` (backup

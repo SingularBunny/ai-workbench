@@ -141,6 +141,15 @@ existing install to the new id: the config and hooks of `plugins.entries.aiwb-pr
 `plugins.allow`/`deny`; the plugin moves its files `~/.openclaw/workbench/aiwb-projects-*.json` to
 `aiwb-claude-bridge-*.json` when it starts. The section stays "Projects" (catalog id `projects`).
 
+## Chat menu items
+
+The `aiwb-chat-tools` plugin adds items to a chat's **⋯** menu (and the session menu in the sidebar), for any model:
+
+- **Forget a topic…**: the Gateway finds the chat turns and memory paragraphs close to a topic with the local
+  embedding model; tick what to forget, and those turns stay visible but no model sees them again, the ticked memory
+  paragraphs are removed from their files. Needs the OpenClaw fork (its `chat.forget` methods).
+- **New chat**, **Learn a skill from this chat** (`/learn`), **Reset chat…** (`/reset`, after a confirmation).
+
 ## Agents managing chats
 
 An agent can work with chats on its own when asked: "start a chat in agent Claude with this prompt", "send this to

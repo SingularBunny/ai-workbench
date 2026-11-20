@@ -190,10 +190,13 @@ export const PLUGINS = {
     // Several agents in one conversation; a manager picks who speaks next (docs/features/groups.md).
     { id: "aiwb-groups", dir: "aiwb-plugins/groups", ui: "Groups" },
     // Plan mode for any model: /plan, then research and an approved plan before any change (docs/features/plan-mode.md).
-    { id: "aiwb-plan", dir: "aiwb-plugins/plan" },
+    { id: "aiwb-plan", dir: "aiwb-plugins/plan", ui: "Plan" },
     // GPU load and memory, and which models and processes hold it: a line in the chat header, a side panel
     // (docs/features/gpu.md).
     { id: "aiwb-gpu", dir: "aiwb-plugins/gpu", ui: "GPU" },
+    // Chat menu items for any model: Forget a topic (with the fork's chat.forget methods), New chat, Learn a skill,
+    // Reset chat (docs/features/chats.md). ui: the menu items need Custom plugin UI.
+    { id: "aiwb-chat-tools", dir: "aiwb-plugins/chat-tools", ui: "Chat tools" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone
