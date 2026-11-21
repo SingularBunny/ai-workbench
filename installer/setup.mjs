@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, localPluginPackage, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, groupsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, localPluginPackage, marketHealth, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, groupsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -577,7 +577,7 @@ async function main() {
     return 1;
   }
   let failed = 0;
-  const brokenMarkets = new Set();
+  const markets = marketHealth();
   for (const step of plan) {
     if (step.kind === "skip") continue;
     process.stdout.write(`\n→ ${step.kind} ${step.id}\n`);
@@ -687,7 +687,7 @@ async function main() {
       continue;
     }
     // Marketplace is not at its pinned commit: skip its base plugins, otherwise a different version is silently installed.
-    if (step.kind === "base" && brokenMarkets.has(step.market)) {
+    if (step.kind === "base" && markets.broken(step.market)) {
       failed++; console.error(`✗ base ${step.id}: marketplace ${step.market} is not at the pinned commit — not installing`); continue;
     }
     // A runtime plugin from a local package (WORKBENCH_ACPX_PACKAGE): checked by sha256, kept in the state folder and
@@ -743,10 +743,14 @@ async function main() {
     if (r.code !== 0 || mismatch) {
       failed++;
       // A failure of the base plugin itself (network, cloning its source) does not taint the marketplace: other base plugins still install.
-      if (step.kind === "marketplace") brokenMarkets.add(step.market);
+      if (step.kind === "marketplace") markets.fail(step.market);
       console.error(mismatch ? `✗ ${step.id}: HEAD ${r.out.trim().slice(0, 12)}, pinned ${step.expect.slice(0, 12)}`
         // A secret step (proxy URL) prints no command output: it may echo the value.
         : `✗ ${step.kind} ${step.id} (exit code ${r.code})${r.out && !step.secret ? "\n" + r.out.trim().split("\n").slice(-5).join("\n") : ""}`);
+    } else if (step.kind === "marketplace" && step.expect) {
+      // HEAD is at the pinned commit: an earlier fetch that failed (network) did not leave a different version.
+      const forgiven = markets.verified(step.market);
+      if (forgiven) { failed -= forgiven; console.log(`  ⚠ ${step.market}: an earlier step failed, but HEAD is at the pinned commit — continuing`); }
     }
   }
   pruneMcp(plan);

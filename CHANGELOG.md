@@ -61,6 +61,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Fixed
 
+- A marketplace fetch that fails on a network blip no longer skips its base plugins and fails the install when a
+  later step finds HEAD at the pinned commit; the installer prints a warning instead.
 - Re-running the installer no longer fails on a plugin that lives inside another plugin's folder: own plugins
   OpenClaw already loads from the same folder are not linked again ("already linked" in the plan).
 - Load paths of plugin folders that no longer exist are dropped from `plugins.load.paths`.

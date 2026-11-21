@@ -168,3 +168,17 @@ export function formatPlan(steps) {
     return head + tail + warns;
   }).join("\n");
 }
+
+/**
+ * Marketplace health across its steps: a failed fetch or clone marks it broken, and the "verify HEAD" step
+ * at the pinned commit clears that (the commit was already local or a later step got it), returning how many
+ * earlier failures it forgives so the install is not reported as failed over a network blip.
+ */
+export function marketHealth() {
+  const failures = new Map();
+  return {
+    fail(market) { failures.set(market, (failures.get(market) ?? 0) + 1); },
+    verified(market) { const n = failures.get(market) ?? 0; failures.delete(market); return n; },
+    broken(market) { return failures.has(market); },
+  };
+}

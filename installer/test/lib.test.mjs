@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
-import { acpLaunch, skillCollisions, skillLinkSteps, ACP_AGENT, acpEntry, applyAcp, buildPlan, checkPluginDeps, localPluginPackage, formatPlan, checksumFor, ensureGatewayToken, configBefore, hookSteps, ideSteps, isGitUrl, mainSteps, makeWhich, marketplaceSteps, profileSource, profileTarget, mcpSteps, mergeManifest, staleVersions, touchedBy, uninstallPlan, mergeProfile, parseDependencies, projectSteps, repoSteps, sameRepo, winQuote } from "../lib.mjs";
+import { acpLaunch, skillCollisions, skillLinkSteps, ACP_AGENT, acpEntry, applyAcp, buildPlan, checkPluginDeps, localPluginPackage, formatPlan, checksumFor, ensureGatewayToken, configBefore, hookSteps, ideSteps, isGitUrl, mainSteps, makeWhich, marketplaceSteps, marketHealth, profileSource, profileTarget, mcpSteps, mergeManifest, staleVersions, touchedBy, uninstallPlan, mergeProfile, parseDependencies, projectSteps, repoSteps, sameRepo, winQuote } from "../lib.mjs";
 import * as REAL from "../../openclaw/workbench.config.mjs";
 
 const DEPS = `# header
@@ -1208,4 +1208,14 @@ test("groupsHooksStep grants aiwb-groups conversation access only", async () => 
   const step = groupsHooksStep();
   assert.equal(step.id, "plugins.entries.aiwb-groups.hooks.allowConversationAccess");
   assert.deepEqual(step.argv, ["config", "set", "plugins.entries.aiwb-groups.hooks.allowConversationAccess", "true", "--strict-json"]);
+});
+
+test("marketHealth: a verified pinned HEAD forgives an earlier failed fetch", () => {
+  const m = marketHealth();
+  m.fail("official");
+  assert.equal(m.broken("official"), true);
+  assert.equal(m.broken("other"), false);
+  assert.equal(m.verified("official"), 1);
+  assert.equal(m.broken("official"), false);
+  assert.equal(m.verified("official"), 0);
 });
