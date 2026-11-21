@@ -42,9 +42,9 @@ echo "Fork: $src ($branch, $rev) → $out; build: $( ((core)) && echo "pnpm $bui
 # tar.umask=0022: by default git archive leaves files group-writable, and OpenClaw rejects
 # such package folders (browser extension install: "Refusing group/world-writable path").
 # A proxy from the environment (HTTPS_PROXY/HTTP_PROXY) reaches the build: the container then shares the host
-# network, so a proxy on the host's localhost works too.
+# network, so a proxy on the host's localhost works too. Node's own fetch (build plugins) honors it with NODE_USE_ENV_PROXY=1.
 net=()
-[[ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]] && net=(--network host -e HTTPS_PROXY -e HTTP_PROXY -e NO_PROXY)
+[[ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]] && net=(--network host -e HTTPS_PROXY -e HTTP_PROXY -e NO_PROXY -e NODE_USE_ENV_PROXY=1)
 # The packer resolves the package's npm lock against the registry (npm install --package-lock-only, 10-minute
 # limit). The aiwb-openclaw-npm volume keeps npm's cache between builds, so a slow network or proxy does not
 # stall that step; OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS and OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS raise the limits.
