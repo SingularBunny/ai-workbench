@@ -48,7 +48,9 @@ net=()
 # The packer resolves the package's npm lock against the registry (npm install --package-lock-only, 10-minute
 # limit). The aiwb-openclaw-npm volume keeps npm's cache between builds, so a slow network or proxy does not
 # stall that step; OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS and OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS raise the limits.
-for v in OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS; do
+# The plugin packer caps that npm step at 3 minutes itself; npm_config_prefer_offline=true lets it answer from
+# the npm cache volume when the registry is slow (the lock's dependencies rarely change between builds).
+for v in OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS npm_config_prefer_offline; do
   [[ -n "${!v:-}" ]] && net+=(-e "$v")
 done
 git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i "${net[@]}" \
