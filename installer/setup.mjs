@@ -452,12 +452,12 @@ async function main() {
     return existsSync(path.join(dir, ".git")) && normUrl(gitOut(dir, "remote", "get-url", "origin")) === normUrl(url)
       && gitOut(dir, "rev-parse", "HEAD") === sha;
   });
-  const plan = buildPlan({ settings: settings({ home, sep: path.sep, env }), plugins: PLUGINS, pluginsRoot,
+  const plan = buildPlan({ settings: settings({ home, sep: path.sep, env, pluginsRoot }), plugins: PLUGINS, pluginsRoot,
     projectRoot, profileRoot, env, ownState, marketplaceDir,
     before: [...repos.steps, ...hooks], beforeConfig: [...mcp, ...projects, ...main, ...cwds, chatsProjectsStep(projectMeta), ...bridgeRootSteps(chatsRoot), projectsHooksStep(),
       ...((PLUGINS.own || []).some((p) => p.id === "aiwb-groups") ? [groupsHooksStep()] : []),
       ...bridgeAdoptionSteps({ fork: Boolean(env.WORKBENCH_OPENCLAW_PACKAGE), chrome: String(env.WORKBENCH_CLAUDE_CHROME ?? "").trim() === "1" }),
-      ...pluginUiSteps(PLUGINS.own || []),
+      ...pluginUiSteps((PLUGINS.own || []).filter((p) => !p.when || [].concat(p.when).some((k) => env[k]))),
       // Providers with a free tier whose key is in .env: their models can answer in Multi-model.
       ...(PLUGINS.own || []).some((p) => p.id === "aiwb-compare") ? freeProviderSteps(env) : [],
       // The composer microphone: a speech-to-text model for dictation, unless one is set already.

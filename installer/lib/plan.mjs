@@ -37,6 +37,8 @@ export function buildPlan({ settings, plugins, pluginsRoot, projectRoot, profile
     steps.push({ kind: "runtime", id: r.id, argv: ["plugins", "install", r.spec || r.id, "--force"], ...(r.optional ? { optional: r.optional } : {}) });
   }
   for (const o of plugins.own) {
+    // when: as for runtime plugins, a .env key (or several, any one is enough) that turns the plugin on.
+    if (o.when && ![].concat(o.when).some((k) => env[k])) continue;
     const dir = path.join(o.root === "project" ? projectRoot : o.root === "profile" ? profileRoot : pluginsRoot, ...o.dir.split("/"));
     const state = ownState(o, dir);
     if (!state.present) { steps.push({ kind: "skip", id: o.id, reason: `no folder ${dir}` }); continue; }

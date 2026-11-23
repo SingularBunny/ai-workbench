@@ -212,6 +212,10 @@ Claude CLI on a VM: user@host from ~/.ssh/config. The VM needs claude-agent-acp,
 
 JetBrains Junie CLI as an ACP agent ([integrations/junie.md](../integrations/junie.md)): the full path to junie, for example /home/you/.local/bin/junie. Registers Junie as the ACP agent junie (/acp spawn junie in a chat); its turns spend JetBrains AI credits. Log in to Junie yourself first (run junie once). Installs the acpx plugin.
 
+### `WORKBENCH_PROXY_POOL`
+
+Any value: install the aiwb-proxy-pool plugin and run Junie through it. JetBrains answers 451 to some countries and 403 to some data-centre exits; the plugin keeps a pool of free proxies found by proxybroker2 and checked against JetBrains, and only Junie's process goes through it (its local proxy, 127.0.0.1:18795). Free proxies see host names, not HTTPS content. Needs proxybroker2: plugin config proxybrokerPython (and proxybrokerDir).
+
 ## Judge and evals
 
 ### `WORKBENCH_JUDGE_MODEL`

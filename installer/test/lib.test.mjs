@@ -591,6 +591,19 @@ test("shared chat context across switches (F72): only with the fork package", ()
   assert.deepEqual(fork.acp.allowedAgents, ["junie"]);
 });
 
+test("proxy pool: an own plugin with when is installed only when its key is set; Junie then runs through the wrapper", () => {
+  const plugins = { marketplaces: {}, bases: [], runtime: [], own: [{ id: "aiwb-proxy-pool", dir: "aiwb-plugins/proxy-pool", when: "WORKBENCH_PROXY_POOL" }] };
+  const plan = (env) => buildPlan({ settings: [], plugins, pluginsRoot: root, projectRoot: "/repo", env, ownState, marketplaceDir: local });
+  assert.ok(!plan({}).some((s) => s.id === "aiwb-proxy-pool"));
+  assert.equal(plan({ WORKBENCH_PROXY_POOL: "1" }).find((s) => s.id === "aiwb-proxy-pool").kind, "own");
+  assert.ok(REAL.PLUGINS.own.some((p) => p.id === "aiwb-proxy-pool" && p.when === "WORKBENCH_PROXY_POOL"));
+
+  const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env, pluginsRoot: "/p" }));
+  assert.deepEqual(get({ WORKBENCH_JUNIE: "/j" })["plugins.entries.acpx.config.agents.junie"], { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] });
+  assert.deepEqual(get({ WORKBENCH_JUNIE: "/j", WORKBENCH_PROXY_POOL: "1" })["plugins.entries.acpx.config.agents.junie"], {
+    command: "/p/aiwb-plugins/proxy-pool/bin/junie-via-pool", args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] });
+});
+
 test("default model: runtime and fallbacks only when set", () => {
   const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
   const plain = get({});

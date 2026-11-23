@@ -11,7 +11,7 @@
 
 export const OPENCLAW_VERSION = "2026.11.6";
 
-/** @param {{ home: string, sep: string, env: Record<string, string|undefined> }} ctx */
+/** @param {{ home: string, sep: string, env: Record<string, string|undefined>, pluginsRoot?: string }} ctx */
 export function settings(ctx) {
   const model = ctx.env.WORKBENCH_DEFAULT_MODEL || "openrouter/auto";
   const fallbacks = (ctx.env.WORKBENCH_FALLBACK_MODELS || "").split(",").map((m) => m.trim()).filter(Boolean);
@@ -143,7 +143,13 @@ export function settings(ctx) {
   // runtime.type "acp" only in channel bindings and spawns, so its ordinary chat would answer with the default model.
   if (ctx.env.WORKBENCH_JUNIE) {
     acpAgents.push("junie");
-    out.push(["plugins.entries.acpx.config.agents.junie", { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
+    // With WORKBENCH_PROXY_POOL, Junie runs through the aiwb-proxy-pool wrapper, which points only its process at
+    // the pool's local proxy (JetBrains answers 451 to Russia and 403 to some data-centre exits).
+    const viaPool = ctx.env.WORKBENCH_PROXY_POOL && ctx.pluginsRoot;
+    out.push(["plugins.entries.acpx.config.agents.junie", viaPool
+      ? { command: [ctx.pluginsRoot, "aiwb-plugins", "proxy-pool", "bin", "junie-via-pool"].join(ctx.sep),
+        args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] }
+      : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
   }
   // With the fork (F72) an agent a chat is handed to gets the chat so far, and its replies stay in the history the
   // next model sees.
@@ -200,6 +206,10 @@ export const PLUGINS = {
     // In an automation's chat: Run now in the header and the Runs side panel (docs/features/chats.md). Needs a fork
     // build with the run viewer for plugins; on an older one it adds nothing.
     { id: "aiwb-automation-chat", dir: "aiwb-plugins/automation-chat", ui: "Automation chat" },
+    // A local proxy (127.0.0.1:18795) over free proxies found by proxybroker2 and checked, for programs that a
+    // country block or a blocked exit keeps out; only JetBrains Junie is sent through it (docs/integrations/junie.md).
+    // Off unless WORKBENCH_PROXY_POOL is set; needs proxybroker2 (plugin config proxybrokerPython).
+    { id: "aiwb-proxy-pool", dir: "aiwb-plugins/proxy-pool", ui: "Proxy pool", when: "WORKBENCH_PROXY_POOL" },
   ],
   // OpenClaw rejects the remote marketplace entirely: it has 99 `git-subdir` entries, which
   // are not allowed for remote ones (checked in a Docker run, 03.11.2026). So we use our own clone

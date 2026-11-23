@@ -31,3 +31,28 @@ to it. The model is Junie's (its own settings or `--model`), not the OpenClaw ag
 (it copies them). Links keep one copy instead: `~/.junie/AGENTS.md` → `~/.claude/CLAUDE.md`,
 `~/.junie/skills/<name>` → `~/.claude/skills/<name>`, `~/.junie/commands` → `~/.claude/commands`. Claude Code's
 plugins (hooks, MCP servers) are made for Claude Code and are better left out.
+
+## When JetBrains refuses the connection
+
+JetBrains AI answers **451** to some countries and **403** to some data-centre addresses (a shared VPN or proxy
+exit); Junie then fails with `403 Forbidden` although the account and its subscription are fine. The
+`aiwb-proxy-pool` plugin sends only Junie through other exits:
+
+1. Install [proxybroker2](https://github.com/bluet/proxybroker2) (Python 3.10+).
+2. In `~/.openclaw/.env` set `WORKBENCH_PROXY_POOL=1` (next to `WORKBENCH_JUNIE`) and re-run the installer. It
+   installs the plugin and registers Junie as `bin/junie-via-pool --junie <your junie> --acp=true`: the wrapper
+   points only Junie's process at the plugin's local proxy.
+3. Point the plugin at proxybroker2 in its settings (`plugins.entries.aiwb-proxy-pool.config`):
+   `proxybrokerPython` (a Python with proxybroker2) and, for a source checkout, `proxybrokerDir`.
+
+The Gateway then keeps a pool of free proxies: proxybroker2 lists candidates, and each one must open an HTTPS
+tunnel to `checkUrl` (`https://api.jetbrains.ai/` by default; certificate verified) without a 451; Russian
+exits are skipped (`excludeCountries`). The plugin listens on `127.0.0.1:18795` (`port`); each connection goes
+through a pool proxy, and the next one is tried when a tunnel fails. A proxy that fails twice in a row leaves
+the pool; the pool is refreshed every `refreshMinutes` (60) and whenever fewer than `minPool` (5) are left.
+The **Proxy pool** page in the Control UI shows the pool and has a **Refresh pool** button.
+
+For `junie --task` from a terminal or Claude Code, run `junie-via-pool` (in the plugin's `bin/`) the same way.
+
+Free proxies see the host names Junie connects to, not the content: HTTPS goes end to end through the tunnel
+and Junie verifies the certificate. Only Junie uses the pool; the Gateway and other programs do not.
