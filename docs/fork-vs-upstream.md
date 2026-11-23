@@ -1,10 +1,10 @@
 # Why the OpenClaw fork
 
 ai-workbench runs on the official OpenClaw too. The
-[OpenClaw fork](https://github.com/SingularBunny/openclaw/tree/aiwb/2026.11.5) (branch `aiwb/<version>`, based on an
+[OpenClaw fork](https://github.com/SingularBunny/openclaw/tree/aiwb/2026.11.6) (branch `aiwb/<version>`, based on an
 OpenClaw release) adds what a Claude Desktop user misses in the Control UI. Without its settings it behaves as
 upstream. How to install it: [OpenClaw from a fork](openclaw-fork.md). The full, exact list of changes is the
-fork's [FORK.md](https://github.com/SingularBunny/openclaw/blob/aiwb/2026.11.5/FORK.md); this page groups it.
+fork's [FORK.md](https://github.com/SingularBunny/openclaw/blob/aiwb/2026.11.6/FORK.md); this page groups it.
 
 **Models**: *any model* — works whatever model the agent runs on; *Claude CLI* — needs the `claude-cli` backend
 (Claude Code, for example on a Claude subscription).
