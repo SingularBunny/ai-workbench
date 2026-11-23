@@ -56,3 +56,8 @@ For `junie --task` from a terminal or Claude Code, run `junie-via-pool` (in the 
 
 Free proxies see the host names Junie connects to, not the content: HTTPS goes end to end through the tunnel
 and Junie verifies the certificate. Only Junie uses the pool; the Gateway and other programs do not.
+
+The local proxy accepts any program on this computer that is pointed at it. To keep it for Junie alone, set
+`requireAuth: true` in the plugin's settings (off by default): the plugin then makes a password in
+`~/.openclaw/workbench/proxy-pool.secret` (readable by you only), `junie-via-pool` reads it from there, and any
+other program gets **407**. The password stays on this computer; the free proxies never see it.
