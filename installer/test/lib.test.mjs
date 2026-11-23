@@ -602,6 +602,14 @@ test("proxy pool: an own plugin with when is installed only when its key is set;
   assert.deepEqual(get({ WORKBENCH_JUNIE: "/j" })["plugins.entries.acpx.config.agents.junie"], { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] });
   assert.deepEqual(get({ WORKBENCH_JUNIE: "/j", WORKBENCH_PROXY_POOL: "1" })["plugins.entries.acpx.config.agents.junie"], {
     command: "/p/aiwb-plugins/proxy-pool/bin/junie-via-pool", args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] });
+  // A proxy of your own wins over the pool (the plugin stays installed); Windows has no env(1).
+  const own = get({ WORKBENCH_JUNIE: "/j", WORKBENCH_PROXY_POOL: "1", WORKBENCH_JUNIE_PROXY: "http://127.0.0.1:1" })["plugins.entries.acpx.config.agents.junie"];
+  assert.equal(own.command, "/usr/bin/env");
+  assert.deepEqual(own.args.slice(-2), ["${WORKBENCH_JUNIE}", "--acp=true"]);
+  assert.ok(own.args.includes("HTTPS_PROXY=${WORKBENCH_JUNIE_PROXY}") && own.args.includes("http_proxy=${WORKBENCH_JUNIE_PROXY}"));
+  assert.ok(own.args.includes("NO_PROXY=localhost,127.0.0.1,::1"));
+  const win = Object.fromEntries(REAL.settings({ home: "C:\\h", sep: "\\", env: { WORKBENCH_JUNIE: "j", WORKBENCH_JUNIE_PROXY: "http://x" } }));
+  assert.deepEqual(win["plugins.entries.acpx.config.agents.junie"], { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] });
 });
 
 test("default model: runtime and fallbacks only when set", () => {

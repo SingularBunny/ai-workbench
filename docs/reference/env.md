@@ -216,6 +216,10 @@ JetBrains Junie CLI as an ACP agent ([integrations/junie.md](../integrations/jun
 
 Any value: install the aiwb-proxy-pool plugin and run Junie through it. JetBrains answers 451 to some countries and 403 to some data-centre exits; the plugin keeps a pool of free proxies found by proxybroker2 and checked against JetBrains, and only Junie's process goes through it (its local proxy, 127.0.0.1:18795). Free proxies see host names, not HTTPS content. Needs proxybroker2: plugin config proxybrokerPython (and proxybrokerDir).
 
+### `WORKBENCH_JUNIE_PROXY`
+
+A proxy URL (`http://host:port`) for Junie alone, on Linux and macOS: the installer starts Junie as `/usr/bin/env HTTPS_PROXY=… <junie> --acp=true`, so only Junie's process uses it and the Gateway's traffic does not. Use it when a proxy of your own already reaches JetBrains (for example a VPN client whose server sends `jetbrains.com`, `jetbrains.ai` and `jb.gg` out through an exit JetBrains accepts; Junie's model requests go to `*.labs.jb.gg`). Wins over `WORKBENCH_PROXY_POOL` for Junie; the pool plugin stays installed.
+
 ## Judge and evals
 
 ### `WORKBENCH_JUDGE_MODEL`

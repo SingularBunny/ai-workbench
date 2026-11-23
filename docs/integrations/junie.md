@@ -35,8 +35,14 @@ plugins (hooks, MCP servers) are made for Claude Code and are better left out.
 ## When JetBrains refuses the connection
 
 JetBrains AI answers **451** to some countries and **403** to some data-centre addresses (a shared VPN or proxy
-exit); Junie then fails with `403 Forbidden` although the account and its subscription are fine. The
-`aiwb-proxy-pool` plugin sends only Junie through other exits:
+exit); Junie then fails with `403 Forbidden` although the account and its subscription are fine. Junie's model
+requests go to `*.labs.jb.gg`, its login and site to `jetbrains.com` and `jetbrains.ai`.
+
+If a proxy of your own already reaches JetBrains on all three (for example a VPN client whose server sends these
+domains out through an exit JetBrains accepts), set `WORKBENCH_JUNIE_PROXY=http://host:port` in `~/.openclaw/.env`
+and re-run the installer (Linux, macOS): only Junie's process is pointed at it.
+
+Otherwise the `aiwb-proxy-pool` plugin sends only Junie through other exits:
 
 1. Install [proxybroker2](https://github.com/bluet/proxybroker2) (Python 3.10+).
 2. In `~/.openclaw/.env` set `WORKBENCH_PROXY_POOL=1` (next to `WORKBENCH_JUNIE`) and re-run the installer. It

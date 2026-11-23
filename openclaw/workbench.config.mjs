@@ -143,13 +143,19 @@ export function settings(ctx) {
   // runtime.type "acp" only in channel bindings and spawns, so its ordinary chat would answer with the default model.
   if (ctx.env.WORKBENCH_JUNIE) {
     acpAgents.push("junie");
-    // With WORKBENCH_PROXY_POOL, Junie runs through the aiwb-proxy-pool wrapper, which points only its process at
-    // the pool's local proxy (JetBrains answers 451 to Russia and 403 to some data-centre exits).
+    // JetBrains answers 451 to Russia and 403 to some data-centre exits. WORKBENCH_JUNIE_PROXY (Linux, macOS) points
+    // only Junie's process at a proxy of your own through env(1), since acpx agents take no environment of their own;
+    // else, with WORKBENCH_PROXY_POOL, Junie runs through the aiwb-proxy-pool wrapper and its local proxy.
+    const viaProxy = ctx.env.WORKBENCH_JUNIE_PROXY && ctx.sep === "/";
     const viaPool = ctx.env.WORKBENCH_PROXY_POOL && ctx.pluginsRoot;
-    out.push(["plugins.entries.acpx.config.agents.junie", viaPool
-      ? { command: [ctx.pluginsRoot, "aiwb-plugins", "proxy-pool", "bin", "junie-via-pool"].join(ctx.sep),
-        args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] }
-      : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
+    const proxyVars = ["HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"].map((name) => `${name}=\${WORKBENCH_JUNIE_PROXY}`);
+    out.push(["plugins.entries.acpx.config.agents.junie", viaProxy
+      ? { command: "/usr/bin/env", args: ["-u", "ALL_PROXY", "-u", "all_proxy", ...proxyVars,
+        "NO_PROXY=localhost,127.0.0.1,::1", "no_proxy=localhost,127.0.0.1,::1", "${WORKBENCH_JUNIE}", "--acp=true"] }
+      : viaPool
+        ? { command: [ctx.pluginsRoot, "aiwb-plugins", "proxy-pool", "bin", "junie-via-pool"].join(ctx.sep),
+          args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] }
+        : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
   }
   // With the fork (F72) an agent a chat is handed to gets the chat so far, and its replies stay in the history the
   // next model sees.
