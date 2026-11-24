@@ -193,6 +193,10 @@ replace_openclaw() {   # $1: install-cli.sh, $2: its --version argument
   local npm_proxy; npm_proxy="$(npm_route)"
   [[ -n "$npm_proxy" ]] && echo "The npm registry does not answer directly; npm goes through the proxy in WORKBENCH_PROXY_URL."
   (( loaded )) && stop_gateway_service
+  # The npm cache (~/.npm) already holds nearly every dependency of a new fork build; by default npm still
+  # revalidates each one with the registry, so a slow registry kept the Gateway stopped for tens of minutes
+  # (24.11.2026). prefer-offline answers from the cache and fetches only what is missing.
+  export npm_config_prefer_offline="${npm_config_prefer_offline:-true}"
   if [[ -n "$npm_proxy" ]]; then
     HTTPS_PROXY="$npm_proxy" HTTP_PROXY="$npm_proxy" https_proxy="$npm_proxy" http_proxy="$npm_proxy" \
       npm_config_fetch_timeout=600000 npm_config_fetch_retries=5 \

@@ -166,7 +166,7 @@ How long the installer waits for the Gateway service to become healthy after a s
 
 ### `WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`
 
-Before OpenClaw is replaced (and only when `HTTPS_PROXY` is not set), the installer downloads a small file from the npm registry directly (default a 27 KB semver tarball, limit 20 s). If that fails and `WORKBENCH_PROXY_URL` answers, install-cli.sh and its npm go through that proxy, so a stalled direct route does not keep the Gateway stopped while npm hangs.
+Before OpenClaw is replaced (and only when `HTTPS_PROXY` is not set), the installer downloads a small file from the npm registry directly (default a 27 KB semver tarball, limit 20 s). If that fails and `WORKBENCH_PROXY_URL` answers, install-cli.sh and its npm go through that proxy, so a stalled direct route does not keep the Gateway stopped while npm hangs. npm also runs with `npm_config_prefer_offline=true` (unless set otherwise): dependencies already in the npm cache are not revalidated with the registry.
 
 ### `WORKBENCH_INSTALL_CLI`
 

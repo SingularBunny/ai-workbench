@@ -64,7 +64,8 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 - Installer: a Gateway that is still starting is waited for before chats are paused (it was read as "no Gateway" and
   OpenClaw was replaced without the pause or the wait for turns); setup stopped by running turns no longer says
   "Nothing has been changed" after OpenClaw was already replaced; a stalled direct npm registry is detected before
-  the Gateway stops, and npm then goes through `WORKBENCH_PROXY_URL` (`WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`).
+  the Gateway stops, and npm then goes through `WORKBENCH_PROXY_URL` (`WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`);
+  npm takes dependencies from its cache without revalidating them (`npm_config_prefer_offline=true`).
 
 - A marketplace fetch that fails on a network blip no longer skips its base plugins and fails the install when a
   later step finds HEAD at the pinned commit; the installer prints a warning instead.
