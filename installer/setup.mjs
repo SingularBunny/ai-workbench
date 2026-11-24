@@ -729,6 +729,13 @@ async function main() {
       }
       if (r.code === 0) console.log(`  saved with \`openclaw models set\`: ${value.primary} is not in the offline model catalog`);
     }
+    // OpenClaw will not change an array that holds ${VAR} references in place (Junie's command arguments, say): the
+    // setting is removed and written again.
+    if (step.kind === "config" && r.code !== 0 && /array containing environment references/i.test(r.out)) {
+      const removed = openclaw(["config", "unset", step.id], { capture: true });
+      if (removed.code === 0) r = openclaw(step.argv, { capture: true });
+      if (r.code === 0) console.log(`  rewritten: ${step.id} held \${…} references in an array`);
+    }
     const mismatch = step.expect && r.code === 0 && r.out.trim() !== step.expect;
     // A tolerant step may find nothing to do (an old plugin id already gone).
     if (step.tolerant && r.code !== 0) { console.log(`  nothing to remove: ${r.out.trim().split("\n").slice(-1)[0] || `exit code ${r.code}`}`); continue; }
