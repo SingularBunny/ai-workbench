@@ -149,13 +149,16 @@ export function settings(ctx) {
     const viaProxy = ctx.env.WORKBENCH_JUNIE_PROXY && ctx.sep === "/";
     const viaPool = ctx.env.WORKBENCH_PROXY_POOL && ctx.pluginsRoot;
     const proxyVars = ["HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"].map((name) => `${name}=\${WORKBENCH_JUNIE_PROXY}`);
+    // The fork's acpx (WORKBENCH_ACPX_PACKAGE) shows Junie's JetBrains AI credit balance in the Limits views: it asks
+    // Junie's own /stats in a throwaway session (no model call) and caches it for 10 minutes. npm acpx rejects the key.
+    const usage = ctx.env.WORKBENCH_ACPX_PACKAGE ? { usage: { command: "stats" } } : {};
     out.push(["plugins.entries.acpx.config.agents.junie", viaProxy
       ? { command: "/usr/bin/env", args: ["-u", "ALL_PROXY", "-u", "all_proxy", ...proxyVars,
-        "NO_PROXY=localhost,127.0.0.1,::1", "no_proxy=localhost,127.0.0.1,::1", "${WORKBENCH_JUNIE}", "--acp=true"] }
+        "NO_PROXY=localhost,127.0.0.1,::1", "no_proxy=localhost,127.0.0.1,::1", "${WORKBENCH_JUNIE}", "--acp=true"], ...usage }
       : viaPool
         ? { command: [ctx.pluginsRoot, "aiwb-plugins", "proxy-pool", "bin", "junie-via-pool"].join(ctx.sep),
-          args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"] }
-        : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] }]);
+          args: ["--junie", "${WORKBENCH_JUNIE}", "--acp=true"], ...usage }
+        : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"], ...usage }]);
   }
   // With the fork (F72) an agent a chat is handed to gets the chat so far, and its replies stay in the history the
   // next model sees.

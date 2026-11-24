@@ -610,6 +610,12 @@ test("proxy pool: an own plugin with when is installed only when its key is set;
   assert.ok(own.args.includes("NO_PROXY=localhost,127.0.0.1,::1"));
   const win = Object.fromEntries(REAL.settings({ home: "C:\\h", sep: "\\", env: { WORKBENCH_JUNIE: "j", WORKBENCH_JUNIE_PROXY: "http://x" } }));
   assert.deepEqual(win["plugins.entries.acpx.config.agents.junie"], { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"] });
+  // The fork's acpx reads Junie's credit balance with its own /stats; npm acpx would reject the key.
+  const fork = { WORKBENCH_JUNIE: "/j", WORKBENCH_ACPX_PACKAGE: "/acpx.tgz" };
+  assert.deepEqual(get(fork)["plugins.entries.acpx.config.agents.junie"], {
+    command: "${WORKBENCH_JUNIE}", args: ["--acp=true"], usage: { command: "stats" } });
+  assert.deepEqual(get({ ...fork, WORKBENCH_PROXY_POOL: "1" })["plugins.entries.acpx.config.agents.junie"].usage, { command: "stats" });
+  assert.deepEqual(get({ ...fork, WORKBENCH_JUNIE_PROXY: "http://127.0.0.1:1" })["plugins.entries.acpx.config.agents.junie"].usage, { command: "stats" });
 });
 
 test("default model: runtime and fallbacks only when set", () => {

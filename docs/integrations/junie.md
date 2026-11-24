@@ -24,6 +24,12 @@ the way to use those credits from OpenClaw.
 There is no separate "Junie" agent in the agent list: OpenClaw sends an agent's turns to an ACP harness only through
 these two paths, so such an agent's ordinary chat would answer with the default model.
 
+**Credit balance.** With `acpx` from the fork, the installer adds `usage: { command: "stats" }` to Junie's entry:
+the Usage page (provider plans and billing) and **Plan limits** on the Models page show **Junie** with its licence and
+"Balance left" in credits. The fork reads it by sending Junie's own `/stats` in a throwaway session (no model call,
+no credits spent), at most every 10 minutes, and shows how old the value is. With your own provider key in Junie
+there is no balance, only the licence.
+
 Junie works with its own permissions on the Gateway machine; OpenClaw's sandbox and read-only modes do not apply
 to it. The model is Junie's (its own settings or `--model`), not the OpenClaw agent's.
 
