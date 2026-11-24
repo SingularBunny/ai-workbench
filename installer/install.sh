@@ -73,6 +73,18 @@ fetch() {
     curl -fsSL --proto '=https' --tlsv1.2 --proxy "$WORKBENCH_PROXY_URL" "$src" -o "$out"
   fi
 }
+# install-cli.sh downloads Node and npm packages and follows HTTPS_PROXY. Without one in the environment the
+# npm registry is probed directly first; when that fails (24.11.2026: direct requests stalled for 20 s and broke
+# mid-body, the Gateway stayed stopped ~1 h) and WORKBENCH_PROXY_URL answers, the replacement goes through it.
+# Prints the proxy to use, or nothing for direct.
+npm_route() {
+  [[ -n "${HTTPS_PROXY:-${https_proxy:-}}" ]] && return 0
+  local probe="${WORKBENCH_NPM_PROBE_URL:-https://registry.npmjs.org/semver/-/semver-7.6.3.tgz}"
+  curl -fsS -o /dev/null --max-time "${WORKBENCH_NPM_PROBE_SEC:-20}" "$probe" 2>/dev/null && return 0
+  [[ -n "${WORKBENCH_PROXY_URL:-}" ]] || return 0
+  curl -fsS -o /dev/null --max-time "${WORKBENCH_NPM_PROBE_SEC:-20}" --proxy "$WORKBENCH_PROXY_URL" "$probe" 2>/dev/null \
+    && echo "$WORKBENCH_PROXY_URL"
+}
 # WORKBENCH_INSTALL_CLI: a local install-cli.sh instead of the download (offline installs, installer tests).
 get_install_cli() {
   if [[ -n "${WORKBENCH_INSTALL_CLI:-}" ]]; then cp "$WORKBENCH_INSTALL_CLI" "$1"; else fetch https://openclaw.ai/install-cli.sh "$1"; fi
@@ -132,7 +144,7 @@ const i = t.indexOf("{"); if (i < 0) process.exit(3); console.log(upcomingAutoma
 # (trap), and on its own after 2 hours if the script is killed. A Gateway without it: wait_gateway_idle as before.
 # If the Gateway cannot be reached at the end (a failed upgrade), `maint exit` retries while it is still starting and
 # then clears the installer's state file directly: a failed install never leaves chats paused.
-maintenance_on=0
+maintenance_on=0 replaced=0
 run_node() {
   local n; n="$(command -v node || find "$prefix" -maxdepth 5 -type f -path '*/bin/node' 2>/dev/null | head -1)"
   [[ -x "$n" ]] && command -v openclaw >/dev/null || return 2
@@ -178,8 +190,17 @@ start_gateway_service() {
 replace_openclaw() {   # $1: install-cli.sh, $2: its --version argument
   local st; st="$(upg status 2>/dev/null)" || st=""
   local loaded=0; [[ "${st%% *}" == 1 ]] && loaded=1
+  local npm_proxy; npm_proxy="$(npm_route)"
+  [[ -n "$npm_proxy" ]] && echo "The npm registry does not answer directly; npm goes through the proxy in WORKBENCH_PROXY_URL."
   (( loaded )) && stop_gateway_service
-  bash "$1" --prefix "$prefix" --version "$2" --no-onboard --runtime-only
+  if [[ -n "$npm_proxy" ]]; then
+    HTTPS_PROXY="$npm_proxy" HTTP_PROXY="$npm_proxy" https_proxy="$npm_proxy" http_proxy="$npm_proxy" \
+      npm_config_fetch_timeout=600000 npm_config_fetch_retries=5 \
+      bash "$1" --prefix "$prefix" --version "$2" --no-onboard --runtime-only
+  else
+    bash "$1" --prefix "$prefix" --version "$2" --no-onboard --runtime-only
+  fi
+  replaced=1
   local rc=0; upg config-check || rc=$?
   (( rc == 0 || rc == 2 )) || { gw_leave_down=1; exit 1; }
   if (( loaded )); then
@@ -216,14 +237,35 @@ pause_chats() {
   (( dry )) && return 0
   local rc=0
   if (( maintenance_on )); then maint ensure >/dev/null || true; return 0; fi
+  # A Gateway service that is starting does not answer yet: `maint enter` would read it as "no Gateway" and the
+  # replacement would go on without pausing chats or waiting for turns (24.11.2026). Wait for it first.
+  local st; st="$(upg status 2>/dev/null)" || st=""
+  if gw_running "$st" && [[ "$(echo "$st" | cut -d' ' -f3)" != 1 ]]; then
+    echo "The Gateway is starting; waiting for it before pausing chats…"
+    upg wait-up --no-report >/dev/null || true
+  fi
   maint enter || rc=$?
   case "$rc" in
     0) maintenance_on=1 ;;
     3) maint exit >/dev/null || true
-       echo "Not continuing: agent turns still run, so $1 would break them. Nothing has been changed;" >&2
-       echo "chats are resumed. Run the install again later, or raise WORKBENCH_MAINTENANCE_WAIT_MIN (minutes, default 30)." >&2
+       if (( replaced )); then
+         echo "Not continuing: agent turns still run, so $1 would break them. OpenClaw IS already replaced and the" >&2
+         echo "Gateway runs the new version; only $1 (config, plugins, skills) was not run. Chats are resumed." >&2
+         echo "Run installer/install.sh --yes again later to finish it (the same package is not reinstalled), or raise" >&2
+         echo "WORKBENCH_MAINTENANCE_WAIT_MIN (minutes, default 30)." >&2
+       else
+         echo "Not continuing: agent turns still run, so $1 would break them. Nothing has been changed;" >&2
+         echo "chats are resumed. Run the install again later, or raise WORKBENCH_MAINTENANCE_WAIT_MIN (minutes, default 30)." >&2
+       fi
        exit 1 ;;
-    *) if [[ "$1" == "the replacement" ]]; then wait_gateway_idle; fi ;;
+    *) st="$(upg status 2>/dev/null)" || st=""
+       # Answers but has no maintenance mode (the official OpenClaw): the idle wait below covers it.
+       if gw_running "$st" && [[ "$(echo "$st" | cut -d' ' -f3)" != 1 ]]; then
+         echo "Not continuing: the Gateway service runs but does not answer, so chats cannot be paused and running" >&2
+         echo "turns cannot be checked. $( (( replaced )) && echo "OpenClaw IS already replaced; " )Check openclaw health and run the install again." >&2
+         exit 1
+       fi
+       if [[ "$1" == "the replacement" ]]; then wait_gateway_idle; fi ;;
   esac
 }
 ide_agents_note() {

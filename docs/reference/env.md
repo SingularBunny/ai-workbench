@@ -164,6 +164,10 @@ Upgrade safety: a config the new OpenClaw rejects (retired keys) is repaired wit
 
 How long the installer waits for the Gateway service to become healthy after a start (default 10 minutes: the first start of a new version migrates databases); a service that fails stops the install sooner.
 
+### `WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`
+
+Before OpenClaw is replaced (and only when `HTTPS_PROXY` is not set), the installer downloads a small file from the npm registry directly (default a 27 KB semver tarball, limit 20 s). If that fails and `WORKBENCH_PROXY_URL` answers, install-cli.sh and its npm go through that proxy, so a stalled direct route does not keep the Gateway stopped while npm hangs.
+
 ### `WORKBENCH_INSTALL_CLI`
 
 A local install-cli.sh instead of the download from openclaw.ai (offline installs, installer tests).

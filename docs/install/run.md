@@ -47,7 +47,10 @@ chat turn starts:
 
 The Control UI shows "Maintenance: chats paused" with a **Resume chats** button. Turning it on, the installer
 first waits for running agent turns, at most 30 minutes (`WORKBENCH_MAINTENANCE_WAIT_MIN`); if they still run,
-it stops without changing anything and resumes chats. If the Gateway does not answer at the end (a failed
+it stops without changing anything and resumes chats. A Gateway service that is still starting is waited for
+before chats are paused; one that runs but does not answer stops the install instead of a replacement without
+the pause. If turns still run when setup (after the replacement) wants to pause chats, the installer says that
+OpenClaw is already replaced and only setup is left: run `install.sh --yes` again to finish it. If the Gateway does not answer at the end (a failed
 upgrade), the installer retries for up to 3 minutes while the service is still starting
 (`WORKBENCH_MAINTENANCE_EXIT_WAIT_SEC`), then removes its own state file `~/.openclaw/gateway-maintenance.json`
 (`$OPENCLAW_STATE_DIR` if set), so chats run as soon as the Gateway starts. If the installer is killed outright,
