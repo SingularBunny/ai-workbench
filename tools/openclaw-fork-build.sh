@@ -45,6 +45,8 @@ echo "Fork: $src ($branch, $rev) → $out; build: $( ((core)) && echo "pnpm $bui
 # network, so a proxy on the host's localhost works too. Node's own fetch (build plugins) honors it with NODE_USE_ENV_PROXY=1.
 net=()
 [[ -n "${HTTPS_PROXY:-}${HTTP_PROXY:-}" ]] && net=(--network host -e HTTPS_PROXY -e HTTP_PROXY -e NO_PROXY -e NODE_USE_ENV_PROXY=1)
+# The aiwb-openclaw-corepack volume keeps the pnpm that corepack downloads: a TLS reset on that one download
+# (24.11.2026, even through the proxy) failed the whole build before pnpm install.
 # The packer resolves the package's npm lock against the registry (npm install --package-lock-only, 10-minute
 # limit). The aiwb-openclaw-npm volume keeps npm's cache between builds, so a slow network or proxy does not
 # stall that step; OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS and OPENCLAW_DOCKER_PACKAGE_INVENTORY_TIMEOUT_MS raise the limits.
@@ -55,7 +57,7 @@ for v in OPENCLAW_NPM_LOCK_COMMAND_TIMEOUT_MS OPENCLAW_DOCKER_PACKAGE_INVENTORY_
 done
 git -C "$src" -c tar.umask=0022 archive --format=tar HEAD | docker run --rm -i "${net[@]}" \
   -e BUILD="$build" -e CORE="$core" -e REV="$rev" -e GIT_COMMIT="$commit" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e HOME=/tmp/home -e OPENCLAW_CONTROL_UI_RELEASE_BUILD=1 -e CI=1 \
-  -v aiwb-openclaw-pnpm:/pnpm-store -v aiwb-openclaw-npm:/tmp/home/.npm -v "$out":/out "$image" bash -euo pipefail -c '
+  -v aiwb-openclaw-pnpm:/pnpm-store -v aiwb-openclaw-npm:/tmp/home/.npm -v aiwb-openclaw-corepack:/tmp/home/.cache/node/corepack -v "$out":/out "$image" bash -euo pipefail -c '
     mkdir -p /tmp/home /tmp/b /tmp/bin && tar -x -C /tmp/b && cd /tmp/b
     corepack enable --install-directory /tmp/bin && export PATH=/tmp/bin:$PATH
     pnpm config set store-dir /pnpm-store
