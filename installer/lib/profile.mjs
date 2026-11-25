@@ -79,6 +79,27 @@ export function projectSteps(projects) {
 }
 
 /**
+ * Working folder of the ACP sessions a project agent spawns (OpenClaw fork, agents.entries.<id>.acp.cwd):
+ * `"acpCwd": "~/code/project"` in project.json. An ACP agent the chat is handed to (`/acp spawn <agent> --bind here`)
+ * starts there, in the project's code, instead of the agent workspace with its instructions and memory.
+ * Stock OpenClaw rejects the key, so without the fork it is skipped; so are a relative path and a missing folder.
+ */
+export function acpCwdSteps({ projects, fork, home, exists = () => true }) {
+  return projects.filter((p) => p.acpCwd !== undefined).map((p) => {
+    const id = `agents.entries.${p.id}.acp.cwd`;
+    const skip = (reason) => ({ kind: "skip", id, reason });
+    if (typeof p.acpCwd !== "string" || !/^(~(?=\/|$)|\/|[A-Za-z]:[\\/])/.test(p.acpCwd.trim())) {
+      return skip(`acpCwd of project ${p.id} must be an absolute path or start with ~`);
+    }
+    if (!fork) return skip("the ACP working folder needs the OpenClaw fork (WORKBENCH_OPENCLAW_PACKAGE)");
+    const dir = path.resolve(p.acpCwd.trim().replace(/^~(?=\/|$)/, home));
+    if (!exists(dir)) return skip(`no folder ${dir}`);
+    return { kind: "config", id, note: `${p.id}: ACP agents work in ${dir}`,
+      argv: ["config", "set", id, JSON.stringify(dir), "--strict-json"] };
+  });
+}
+
+/**
  * Shared memory: the main agent's workspace lives in the data repository, and its memory/ is
  * searched by memory_search of all agents (memory.search.extraPaths for shared notes, docs reference/memory-config.md).
  * The profile sets the whole extraPaths list. No evergreen yet: OpenClaw 2026.10.10 rejected it; 2026.11.x accepts it (memorySearch extraPaths evergreen).

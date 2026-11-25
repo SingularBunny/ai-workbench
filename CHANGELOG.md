@@ -9,6 +9,9 @@ Changes of the OpenClaw fork are listed in its `FORK.md`, changes of the plugins
 
 ### Added
 
+- Code folder for ACP agents: `"acpCwd"` in a project's `project.json` sets `agents.entries.<id>.acp.cwd` (OpenClaw
+  fork), so Junie or another ACP agent the project's chat is handed to starts in the project's code instead of its
+  memory folder ([Projects](docs/features/projects.md#code-folder-for-acp-agents)).
 - Chat tools (`aiwb-chat-tools`): **Forget a topic…**, **New chat**, **Learn a skill from this chat** and **Reset chat…**
   in a chat's ⋯ menu come from a plugin instead of the OpenClaw fork ([Chats](docs/features/chats.md#chat-menu-items)).
 - Safe OpenClaw upgrades ([Upgrades](docs/install/run.md#upgrades)): the installer pauses chats in Gateway maintenance

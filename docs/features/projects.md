@@ -49,3 +49,13 @@ Uninstalling removes its own links.
 
 `"knowledge": ["~/Projects/garden/notes"]` in `project.json` gives the project's agent its own knowledge base
 folders, searched and written to like the folders for every agent. See [Knowledge base](knowledge.md).
+
+## Code folder for ACP agents
+
+`"acpCwd": "~/code/project"` in `project.json` is the folder where ACP agents (for example
+[Junie](../integrations/junie.md)) start when the project's chat is handed to them (`/acp spawn <agent> --bind here`,
+the **Agents** group of the model picker) or the project's agent gives them a task. Without it they start in the
+project folder of the profile, the one with `AGENTS.md` and memory, not in the project's code. The installer
+writes it to `agents.entries.<id>.acp.cwd` (OpenClaw from the fork; without the fork, with a relative path or a
+missing folder the install plan shows a skip). `/acp spawn ... --cwd <folder>` still picks another folder for one
+session.

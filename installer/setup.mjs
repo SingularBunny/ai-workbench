@@ -17,7 +17,7 @@ import readline from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createHash } from "node:crypto";
-import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, localPluginPackage, marketHealth, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, groupsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
+import { acpLaunch, applyAcp, defaultPluginsRoot, applyClaudeEnv, batchEnvVarSteps, claudeCodeProxySteps, proxySteps, bridgeAdoptionSteps, buildPlan, localPluginPackage, marketHealth, pluginUiSteps, keepPinnedBases, chatsCwdSteps, chromeDataDirs, backupSteps, chromeHostFile, chromeHostSteps, gatewayStopTimeoutSteps, gpuEmbeddingsSteps, forkPresetSteps, parseVulkanDevices, chatsProjectsStep, bridgeRootSteps, profileEnv, setEnvLines, unquoteEnv, projectsHooksStep, groupsHooksStep, chatsTimerSteps, skillCollisions, skillLinkSteps, checkPluginDeps, checksumFor, configBefore, ensureGatewayToken, formatPlan, hookSteps, ideSteps, isGitUrl, profileSource, profileTarget, mainSteps, sharedMemorySteps, makeWhich, mcpSteps, mergeManifest, mergeProfile, parseDependencies, pluginRenameSteps, projectSteps, acpCwdSteps, knowledgeSteps, keepLinkedOwn, staleLoadPathSteps, freeProviderSteps, dictationSteps, ttsSteps, modelProvidersToRefresh, removeEnvLines, renameManifest, repoSteps, staleVersions, touchedBy, uninstallPlan, winQuote } from "./lib.mjs";
 import { hasKnowledge, knowledgeFolders, knowledgeTextTimerSteps, projectKnowledgeDirs, withTextCopies } from "./knowledge.mjs";
 import { chatFileFolderSteps } from "./chat-files.mjs";
 import { formatSystemTools, systemToolsPlan } from "./system-tools.mjs";
@@ -399,6 +399,7 @@ async function main() {
       projectMeta = found.map((d) => {
         const meta = JSON.parse(readFileSync(path.join(dir, d, "project.json"), "utf8"));
         return { id: meta.id, name: meta.name, dir: path.join(dir, d), skills: meta.skills, chatFileFolders: meta.chatFileFolders,
+          acpCwd: meta.acpCwd,
           knowledge: meta.knowledge };
       });
     } catch (e) { console.error(String(e.message)); return 1; }
@@ -433,6 +434,8 @@ async function main() {
   const tilde = (p) => path.resolve(p.replace(/^~(?=\/|$)/, home));
   const chatsRoot = env.WORKBENCH_CLAUDE_DESKTOP_ROOT && tilde(env.WORKBENCH_CLAUDE_DESKTOP_ROOT);
   const cwds = chatsCwdSteps({ projects: projectMeta, root: chatsRoot, exists: existsSync });
+  // ACP sessions a project agent spawns start in its acpCwd (project.json; fork only), after the entry itself is set.
+  const acpCwds = acpCwdSteps({ projects: projectMeta, fork: Boolean(env.WORKBENCH_OPENCLAW_PACKAGE), home, exists: existsSync });
   // A base plugin pin is trusted only from a marketplace clone already at its own pinned commit.
   const gitOut = (dir, ...argv) => spawnSync("git", ["-C", dir, ...argv], { encoding: "utf8" }).stdout?.trim() || "";
   const normUrl = (u) => (u || "").replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
@@ -454,7 +457,7 @@ async function main() {
   });
   const plan = buildPlan({ settings: settings({ home, sep: path.sep, env, pluginsRoot }), plugins: PLUGINS, pluginsRoot,
     projectRoot, profileRoot, env, ownState, marketplaceDir,
-    before: [...repos.steps, ...hooks], beforeConfig: [...mcp, ...projects, ...main, ...cwds, chatsProjectsStep(projectMeta), ...bridgeRootSteps(chatsRoot), projectsHooksStep(),
+    before: [...repos.steps, ...hooks], beforeConfig: [...mcp, ...projects, ...main, ...cwds, ...acpCwds, chatsProjectsStep(projectMeta), ...bridgeRootSteps(chatsRoot), projectsHooksStep(),
       ...((PLUGINS.own || []).some((p) => p.id === "aiwb-groups") ? [groupsHooksStep()] : []),
       ...bridgeAdoptionSteps({ fork: Boolean(env.WORKBENCH_OPENCLAW_PACKAGE), chrome: String(env.WORKBENCH_CLAUDE_CHROME ?? "").trim() === "1" }),
       ...pluginUiSteps((PLUGINS.own || []).filter((p) => !p.when || [].concat(p.when).some((k) => env[k]))),

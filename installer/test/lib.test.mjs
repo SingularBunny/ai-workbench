@@ -666,6 +666,22 @@ test("agent run working directory is the Claude Desktop project folder; no folde
   assert.deepEqual(chatsCwdSteps({ projects: [{ id: "alpha", name: "Alpha" }], root: null, exists: () => true }), []);
 });
 
+test("project acpCwd: the folder of the ACP sessions its agent spawns, fork only; bad path or missing folder is a skip", async () => {
+  const { acpCwdSteps } = await import("../lib.mjs");
+  const projects = [{ id: "alpha", acpCwd: "~/code/alpha" }, { id: "beta" }, { id: "gamma", acpCwd: "code/gamma" },
+    { id: "delta", acpCwd: "/srv/delta" }];
+  const have = new Set(["/h/code/alpha"]);
+  const steps = acpCwdSteps({ projects, fork: true, home: "/h", exists: (d) => have.has(d) });
+  assert.deepEqual(steps.map((s) => [s.kind, s.id]), [["config", "agents.entries.alpha.acp.cwd"],
+    ["skip", "agents.entries.gamma.acp.cwd"], ["skip", "agents.entries.delta.acp.cwd"]]);
+  assert.deepEqual(steps[0].argv, ["config", "set", "agents.entries.alpha.acp.cwd", JSON.stringify("/h/code/alpha"), "--strict-json"]);
+  assert.match(steps[1].reason, /absolute path/);
+  assert.match(steps[2].reason, /no folder \/srv\/delta/);
+  const stock = acpCwdSteps({ projects, fork: false, home: "/h", exists: () => true });
+  assert.ok(stock.every((s) => s.kind === "skip"));
+  assert.match(stock[0].reason, /WORKBENCH_OPENCLAW_PACKAGE/);
+});
+
 test("Dreaming model: its own model and permission, through the agent runtime", () => {
   const get = (env) => Object.fromEntries(REAL.settings({ home: "/h", sep: "/", env }));
   assert.ok(!Object.keys(get({})).some((k) => k.includes("memory-core")));

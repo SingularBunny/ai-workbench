@@ -18,6 +18,8 @@ the way to use those credits from OpenClaw.
 
 - **Hand a chat to Junie.** Type `/acp spawn junie --bind here` in a chat: the chat is bound to a Junie session, and
   every following message goes to Junie until you close it (`/acp close`). Owner-only: the Control UI owner can.
+  Junie starts in the project's code folder when the project sets `acpCwd` ([Projects](../features/projects.md#code-folder-for-acp-agents)),
+  otherwise in the agent workspace; `--cwd <folder>` picks another one.
 - **One task from an agent.** An agent can hand Junie a single task and get the result back in its own turn:
   `sessions_spawn({ runtime: "acp", agentId: "junie", task: "..." })`.
 
