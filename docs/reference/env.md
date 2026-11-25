@@ -164,10 +164,6 @@ Upgrade safety: a config the new OpenClaw rejects (retired keys) is repaired wit
 
 How long the installer waits for the Gateway service to become healthy after a start (default 10 minutes: the first start of a new version migrates databases); a service that fails stops the install sooner.
 
-### `WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`
-
-Before OpenClaw is replaced (and only when `HTTPS_PROXY` is not set), the installer downloads a small file from the npm registry directly (default a 27 KB semver tarball, limit 20 s). If that fails and `WORKBENCH_PROXY_URL` answers, install-cli.sh and its npm go through that proxy, so a stalled direct route does not keep the Gateway stopped while npm hangs. npm also runs with `npm_config_prefer_offline=true` (unless set otherwise): dependencies already in the npm cache are not revalidated with the registry.
-
 ### `WORKBENCH_INSTALL_CLI`
 
 A local install-cli.sh instead of the download from openclaw.ai (offline installs, installer tests).
@@ -185,6 +181,10 @@ Network proxy ([install/network.md](../install/network.md)). The URL may hold cr
 - `WORKBENCH_PROXY_URL` — http(s) forward proxy for OpenClaw (proxy.proxyUrl). Empty: proxy config is not touched.
 - `WORKBENCH_PROXY_HOSTS` — with the fork, host suffixes that go through it, everything else direct; empty, \* or all — everything through the proxy (as with `HTTPS_PROXY`).
 - `WORKBENCH_PROXY_ROUTES` — full form, wins over HOSTS: &lt;hosts&gt;=&lt;proxy|direct|URL&gt;;\*=&lt;proxy|direct|URL&gt; (one proxy URL for OpenClaw's own traffic).
+
+### `WORKBENCH_NPM_PROBE_URL`, `WORKBENCH_NPM_PROBE_SEC`
+
+Before downloading, the installer fetches a small file from the npm registry directly, then through `WORKBENCH_PROXY_URL`, and installs by the route that answered. URL of that file and the time limit, in seconds.
 
 ### `WORKBENCH_CLAUDE_CODE_PROXY`
 
@@ -222,7 +222,7 @@ Any value: install the aiwb-proxy-pool plugin and run Junie through it. JetBrain
 
 ### `WORKBENCH_JUNIE_PROXY`
 
-A proxy URL (`http://host:port`) for Junie alone, on Linux and macOS: the installer starts Junie as `/usr/bin/env HTTPS_PROXY=… <junie> --acp=true`, so only Junie's process uses it and the Gateway's traffic does not. Use it when a proxy of your own already reaches JetBrains (for example a VPN client whose server sends `jetbrains.com`, `jetbrains.ai` and `jb.gg` out through an exit JetBrains accepts; Junie's model requests go to `*.labs.jb.gg`). Wins over `WORKBENCH_PROXY_POOL` for Junie; the pool plugin stays installed.
+A proxy for Junie alone (http://host:port; Linux, macOS), e.g. a VPN client that sends JetBrains hosts out through an exit JetBrains accepts. Wins over `WORKBENCH_PROXY_POOL` for Junie; the pool plugin stays installed.
 
 ## Judge and evals
 
