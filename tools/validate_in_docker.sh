@@ -80,7 +80,12 @@ export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}" GROQ_API_KEY="${GROQ_API_KEY
 container_proxy=""; relay_target="${live_proxy:-$proxy}"; proxy_env=()
 if [[ -n "$relay_target" ]]; then
   bridge_ip="$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}' 2>/dev/null)"; bridge_ip="${bridge_ip:-172.17.0.1}"
-  python3 tools/tcp_relay.py "$bridge_ip" 18998 "${relay_target%:*}" "${relay_target##*:}" & relay_pid=$!
+  mkdir -p "${VALIDATE_OUT:-$PWD/dist/validate}"
+  python3 tools/tcp_relay.py "$bridge_ip" 18998 "${relay_target%:*}" "${relay_target##*:}" \
+    2>"${VALIDATE_OUT:-$PWD/dist/validate}/relay.log" & relay_pid=$!
+  # The relay must listen before any container starts: without it every download fails at once.
+  for _ in $(seq 1 20); do (exec 3<>"/dev/tcp/$bridge_ip/18998") 2>/dev/null && break; sleep 0.5; done
+  (exec 3<>"/dev/tcp/$bridge_ip/18998") 2>/dev/null || { echo "proxy relay on $bridge_ip:18998 did not start (see relay.log)" >&2; exit 1; }
   trap 'kill $relay_pid 2>/dev/null' EXIT
   container_proxy="http://$bridge_ip:18998"
   [[ -n "$proxy" ]] && proxy_env=(-e "AIWB_PROXY=$container_proxy")
