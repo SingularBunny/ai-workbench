@@ -589,6 +589,8 @@ test("shared chat context across switches (F72): only with the fork package", ()
   assert.deepEqual(fork["plugins.entries.anthropic.config.cliHistory"], { allowUnknownAuth: true, maxUnseenTurns: 200 });
   assert.equal(fork.acp.seedParentHistory, true);
   assert.deepEqual(fork.acp.allowedAgents, ["junie"]);
+  assert.equal(plain.acp.stream.deliveryMode, "live");
+  assert.equal(fork.acp.stream.deliveryMode, "live");
 });
 
 test("proxy pool: an own plugin with when is installed only when its key is set; Junie then runs through the wrapper", () => {

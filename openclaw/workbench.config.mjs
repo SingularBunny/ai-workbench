@@ -161,8 +161,10 @@ export function settings(ctx) {
         : { command: "${WORKBENCH_JUNIE}", args: ["--acp=true"], ...usage }]);
   }
   // With the fork (F72) an agent a chat is handed to gets the chat so far, and its replies stay in the history the
-  // next model sees.
+  // next model sees. stream.deliveryMode live: the agent's steps and messages reach the chat as it works; OpenClaw's
+  // default (final_only) holds them until the turn ends, and a long turn shows only a spinner.
   if (acpAgents.length) out.push(["acp", { enabled: true, backend: "acpx", allowedAgents: acpAgents,
+    stream: { deliveryMode: "live" },
     ...(ctx.env.WORKBENCH_OPENCLAW_PACKAGE ? { seedParentHistory: true } : {}) }]);
   return out;
 }
