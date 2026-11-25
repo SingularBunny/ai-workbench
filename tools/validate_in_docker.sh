@@ -43,10 +43,14 @@
 #     --live-proxy <host:port> — for --live-model where OpenRouter is reachable only through a proxy on the host's
 #                    loopback (e.g. 127.0.0.1:12334): a relay (tools/tcp_relay.py) on the Docker bridge address
 #                    makes it reachable from the container, which gets it as HTTPS_PROXY for the check's duration
+#     --proxy <host:port> — the whole run goes through a proxy on the host's loopback (e.g. 127.0.0.1:12334), for
+#                    networks where openclaw.ai, npm or the distro mirrors are reachable only through it: the same relay,
+#                    and every login shell of tester gets HTTPS_PROXY/HTTP_PROXY (the installer and the checks run there);
+#                    the distro packages are fetched directly: the mirrors are plain http and the proxy dropped them (502)
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 keep=0; clean=0; matrix=0; distro=debian; public=0; reinstall=0; profile_git=""; oc_package=""; acpx_package=""; upgrade_from=""
-live_model=""; live_judge="google/gemma-4-31b-it:free"; live_proxy=""
+live_model=""; live_judge="google/gemma-4-31b-it:free"; live_proxy=""; proxy=""
 profile="${WORKBENCH_PROFILE:-}"
 args=("$@")
 for ((i=0; i<${#args[@]}; i++)); do
@@ -63,6 +67,7 @@ for ((i=0; i<${#args[@]}; i++)); do
     --live-model) live_model="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-judge) live_judge="${args[i+1]:-}"; i=$((i+1)) ;;
     --live-proxy) live_proxy="${args[i+1]:-}"; i=$((i+1)) ;;
+    --proxy) proxy="${args[i+1]:-}"; i=$((i+1)) ;;
   esac
 done
 if [[ -n "$live_model" ]]; then
@@ -72,12 +77,14 @@ if [[ -n "$live_model" ]]; then
   [[ -n "${!need:-}" ]] || { echo "--live-model $live_model needs $need (environment or ~/.openclaw/.env)" >&2; exit 1; }
 fi
 export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}" GROQ_API_KEY="${GROQ_API_KEY:-}"
-container_proxy=""
-if [[ -n "$live_proxy" ]]; then
+container_proxy=""; relay_target="${live_proxy:-$proxy}"; proxy_env=()
+if [[ -n "$relay_target" ]]; then
   bridge_ip="$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}' 2>/dev/null)"; bridge_ip="${bridge_ip:-172.17.0.1}"
-  python3 tools/tcp_relay.py "$bridge_ip" 18998 "${live_proxy%:*}" "${live_proxy##*:}" & relay_pid=$!
+  python3 tools/tcp_relay.py "$bridge_ip" 18998 "${relay_target%:*}" "${relay_target##*:}" & relay_pid=$!
   trap 'kill $relay_pid 2>/dev/null' EXIT
   container_proxy="http://$bridge_ip:18998"
+  [[ -n "$proxy" ]] && proxy_env=(-e "AIWB_PROXY=$container_proxy")
+  [[ -n "$live_proxy" ]] || container_proxy=""
 fi
 out_root="${VALIDATE_OUT:-$PWD/dist/validate}"; mkdir -p "$out_root"
 
@@ -161,6 +168,8 @@ fi
 suffix="$( (( clean )) && echo -clean)$( (( public )) && echo -public)"
 
 script='
+# --proxy: login shells of tester (su - tester) drop the environment, /etc/profile.d brings the proxy back.
+[[ -n "${AIWB_PROXY:-}" ]] && printf "export HTTPS_PROXY=%s HTTP_PROXY=%s https_proxy=%s http_proxy=%s NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1\n" "$AIWB_PROXY" "$AIWB_PROXY" "$AIWB_PROXY" "$AIWB_PROXY" > /etc/profile.d/aiwb-proxy.sh
 # tester gets the uid of the owner of the clones: they are mounted with 700/600 permissions, and in Ubuntu
 # images uid 1000 is already taken by the ubuntu user, so tester would get a different uid.
 getent passwd "$HOST_UID" | cut -d: -f1 | xargs -r userdel -r 2>/dev/null
@@ -256,7 +265,7 @@ run_linux() {  # $1 — a name from DISTROS; log and artifacts go to $out_root/<
   local d=$1 name="aiwb-install-check-$1" out="$out_root/$1$suffix"
   mkdir -p "$out"; docker rm -f "$name" >/dev/null 2>&1
   { echo "IMAGE=${IMAGE[$d]} $(docker image inspect -f '{{index .RepoDigests 0}}' "${IMAGE[$d]}" 2>/dev/null)"
-    docker run --cpus=4 --restart=no --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || { echo PREP_FAILED; exit 1; }; $script"
+    docker run --cpus=4 --restart=no --name "$name" -e HOST_UID="$(id -u)" -e INSTALL_ARGS="$install_args" -e PROFILE_DIR="$profile_in" -e REINSTALL="$reinstall" -e OC_SHA="$oc_sha" -e ACPX_SHA="$acpx_sha" -e LIVE_MODEL="$live_model" -e LIVE_JUDGE="$live_judge" -e LIVE_PROXY="$container_proxy" "${proxy_env[@]}" -e OPENROUTER_API_KEY -e GROQ_API_KEY "${mounts[@]}" -v "$out:/out" "${IMAGE[$d]}" bash -c "${PREP[$d]} || { echo PREP_FAILED; exit 1; }; $script"
   } >"$out/install.log" 2>&1
   (( keep )) || docker rm -f "$name" >/dev/null 2>&1
 }
@@ -322,7 +331,8 @@ if [[ -n "$upgrade_from" ]]; then
 fi
 if (( matrix )); then
   echo "== Linux matrix: ${DISTROS[*]}, $( (( clean )) && echo 'clean machine' || echo 'developer machine'), $build, in parallel"
-  for d in "${DISTROS[@]}"; do run_linux "$d" & done; wait
+  # Only the distro jobs: a bare wait would also wait for the proxy relay, which runs until exit.
+  jobs_pids=(); for d in "${DISTROS[@]}"; do run_linux "$d" & jobs_pids+=($!); done; wait "${jobs_pids[@]}"
   printf '\n| Distro | Image | Install | config validate | MCP | Judge | Gateway health | ⚠ |\n|---|---|---|---|---|---|---|---|\n'
   for d in "${DISTROS[@]}"; do
     l="$out_root/$d$suffix/install.log"

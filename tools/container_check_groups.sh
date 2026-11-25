@@ -13,7 +13,7 @@ if ! call aiwb-groups.chat.get "{\"sessionKey\":\"$key\"}" | grep -q '"members"'
   echo "GROUPS=skip (aiwb-groups without group chats)"; exit 0
 fi
 # Replies of ACP members land in the chat through the fork's agent_end for ACP turns.
-if ! call aiwb-fork-settings.effective '{}' | grep -q '"fork": *true'; then
+if ! call aiwb-fork-settings.effective '{}' | grep -qE '"fork": *"[0-9a-f]+"'; then  # fork is the installed package's sha256, null without the fork
   echo "GROUPS=skip (no OpenClaw fork: no agent_end for ACP turns)"; exit 0
 fi
 # The member's reply comes through the agent_end hook, which needs conversation access for the plugin.
